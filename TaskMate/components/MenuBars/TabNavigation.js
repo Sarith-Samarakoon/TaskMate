@@ -8,6 +8,9 @@ import HomeScreen from "../TaskManagement/HomeScreen";
 import CalendarScreen from "../ReminderManagement/CalenderScreen";
 import HistoryScreen from "../HistoryManagement/HistoryScreen";
 import ProfileScreen from "../ProfileManagement/ProfileScreen";
+import ReminderScreen from "../ReminderManagement/ReminderScreen";  // Import the ReminderScreen
+import NotificationScreen from "../ReminderManagement/NotificationScreen";  // Import the ReminderScreen
+import setReminder from "../ReminderManagement/SetReminder";  // Import the ReminderScreen
 
 const Tab = createBottomTabNavigator();
 
@@ -53,6 +56,22 @@ const TabNavigator = () => {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
+      {/* Add Reminder Screen to Tab Navigator */}
+      <Tab.Screen
+        name="Reminder"
+        component={ReminderScreen}
+        options={{ headerShown: false }}
+      />
+            <Tab.Screen
+        name="Notification"
+        component={NotificationScreen}
+        options={{ headerShown: false }}
+      />
+                  <Tab.Screen
+        name="SetReminder"
+        component={setReminder}
         options={{ headerShown: false }}
       />
     </Tab.Navigator>

@@ -5,179 +5,124 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Switch,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Calendar } from "react-native-calendars";
+import { useTheme } from "../ThemeContext";
+import { useNavigation } from "@react-navigation/native";
 import TopBar from "../MenuBars/TopBar"; // Importing the new TopBar
-import { useTheme } from "../ThemeContext"; // Import ThemeContext
 
 const CalendarScreen = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("2025-03-04");
+  const [googleSync, setGoogleSync] = useState(true);
+  const [outlookSync, setOutlookSync] = useState(false);
+  const { theme } = useTheme();
+  const navigation = useNavigation();
 
-  // Sample events (replace with actual data)
   const events = [
-    { id: "1", title: "📌 Meeting with Team", time: "10:00 AM" },
-    { id: "2", title: "🏋️ Gym Session", time: "12:00 PM" },
-    { id: "3", title: "📞 Client Call", time: "3:00 PM" },
-    { id: "4", title: "🎂 Birthday Party", time: "7:00 PM" },
+    { id: "1", title: "Flownuet Project Meeting", time: "8:15 AM - 9:00 AM", color: "#34A853" },
+    { id: "2", title: "Team Meeting Reminder", time: "8:15 AM - 9:00 AM", color: "#FBBC05" },
+    { id: "3", title: "Project Review", time: "8:15 AM - 9:00 AM", color: "#A142F4" },
   ];
 
-  // Handle date change
-  const onDateChange = (event, selected) => {
-    setShowPicker(false);
-    if (selected) {
-      setSelectedDate(selected);
-    }
-  };
-
-  const { theme } = useTheme(); // Get theme from context
-
   return (
-    <View
-      style={[
-        styles.container,
-        theme === "dark" ? styles.darkContainer : styles.lightContainer,
-      ]}
-    >
+    <View style={styles.container}>
       <TopBar title="Calendar" />
 
-      {/* Header with Date Picker */}
-      <View
-        style={[
-          styles.header,
-          theme === "dark" ? styles.darkHeader : styles.lightHeader,
-        ]}
-      >
-        <TouchableOpacity onPress={() => setShowPicker(true)}>
-          <Ionicons
-            name="calendar-outline"
-            size={30}
-            color={theme === "dark" ? "#FFD700" : "#007AFF"}
-          />
-        </TouchableOpacity>
-        <Text
-          style={[
-            styles.dateText,
-            theme === "dark" ? styles.darkText : styles.lightText,
-          ]}
-        >
-          {selectedDate.toDateString()}
-        </Text>
+      {/* Top Navigation Bar */}
+      <View style={styles.header}>
+        <Ionicons name="chevron-back" size={24} color="#000" />
+        <Text style={styles.headerTitle}>Calendar</Text>
+        <View style={styles.headerIcons}>
+          {/* Bell Icon Button for Notifications */}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate("Notification")}
+          >
+            <Ionicons name="notifications-outline" size={24} color="#000" />
+          </TouchableOpacity>
+
+          {/* Reminder Button */}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate("Reminder")}
+          >
+            <Ionicons name="calendar-outline" size={24} color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Show Date Picker */}
-      {showPicker && (
-        <DateTimePicker
-          value={new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, date) => console.log(date)}
-        />
-      )}
+      {/* Calendar Component */}
+      <Calendar
+        onDayPress={(day) => setSelectedDate(day.dateString)}
+        markedDates={{ [selectedDate]: { selected: true, selectedColor: "#007AFF" } }}
+   
+        theme={{
+          selectedDayBackgroundColor: "#007AFF",
+          todayTextColor: "#007AFF",
+          arrowColor: "#007AFF",
+        }}
+      />
 
-      {/* Event List */}
+      {/* Today's Tasks */}
+      <Text style={styles.sectionTitle}>TODAY'S TASKS</Text>
       <FlatList
         data={events}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View
-            style={[
-              styles.eventItem,
-              theme === "dark" ? styles.darkEventItem : styles.lightEventItem,
-            ]}
-          >
-            <Text
-              style={[
-                styles.eventText,
-                theme === "dark" ? styles.darkEventText : styles.lightEventText,
-              ]}
+          <View style={styles.taskItem}>
+            <View style={[styles.taskIndicator, { backgroundColor: item.color }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.taskTitle}>{item.title}</Text>
+              <Text style={styles.taskTime}>{item.time}</Text>
+            </View>
+            
+            {/* Set Reminder Button */}
+            <TouchableOpacity
+              style={styles.reminderButton}
+              onPress={() => navigation.navigate("SetReminder", { taskTitle: item.title })}
             >
-              {item.title}
-            </Text>
-            <Text
-              style={[
-                styles.eventTime,
-                theme === "dark" ? styles.darkEventTime : styles.lightEventTime,
-              ]}
-            >
-              {item.time}
-            </Text>
+              <Ionicons name="alarm-outline" size={24} color="white" />
+            </TouchableOpacity>
           </View>
         )}
       />
+
+      {/* Connected Calendars */}
+      <Text style={styles.sectionTitle}>CONNECTED CALENDARS</Text>
+      <View style={styles.calendarSync}>
+        <Text style={styles.calendarText}>Google Calendar</Text>
+        <Switch value={googleSync} onValueChange={setGoogleSync} />
+      </View>
+      <View style={styles.calendarSync}>
+        <Text style={styles.calendarText}>Outlook</Text>
+        <Switch value={outlookSync} onValueChange={setOutlookSync} />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  lightContainer: {
-    backgroundColor: "#F5F5F5",
-  },
-  darkContainer: {
-    backgroundColor: "#121212",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
+  container: { flex: 1, backgroundColor: "#F5F5F5" },
+  header: { flexDirection: "row", justifyContent: "space-between", padding: 15, alignItems: "center" },
+  headerTitle: { fontSize: 18, fontWeight: "bold" },
+  headerIcons: { flexDirection: "row", gap: 15 },
+  sectionTitle: { fontSize: 16, fontWeight: "bold", margin: 15 },
+  taskItem: { flexDirection: "row", alignItems: "center", padding: 15, backgroundColor: "#fff", marginBottom: 10, borderRadius: 8 },
+  taskIndicator: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
+  taskTitle: { fontSize: 16, fontWeight: "bold" },
+  taskTime: { fontSize: 14, color: "#555" },
+  calendarSync: { flexDirection: "row", justifyContent: "space-between", padding: 15, backgroundColor: "#fff", marginBottom: 10, borderRadius: 8 },
+  calendarText: { fontSize: 16 },
+  reminderButton: {
+    backgroundColor: "#007AFF",
+    padding: 10,
+    borderRadius: 5,
     justifyContent: "center",
-    paddingVertical: 15,
-    borderRadius: 10,
-    elevation: 3,
-  },
-  lightHeader: {
-    backgroundColor: "#fff",
-  },
-  darkHeader: {
-    backgroundColor: "#1E1E1E",
-  },
-  dateText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
-  lightText: {
-    color: "#333",
-  },
-  darkText: {
-    color: "#FFD700",
-  },
-  eventItem: {
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    elevation: 2,
-  },
-  lightEventItem: {
-    backgroundColor: "#fff",
-  },
-  darkEventItem: {
-    backgroundColor: "#333",
-  },
-  eventText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  lightEventText: {
-    color: "#333",
-  },
-  darkEventText: {
-    color: "#FFD700",
-  },
-  eventTime: {
-    fontSize: 14,
-  },
-  lightEventTime: {
-    color: "#007AFF",
-  },
-  darkEventTime: {
-    color: "#FFD700",
+    alignItems: "center",
   },
 });
 
 export default CalendarScreen;
+ 
