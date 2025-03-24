@@ -12,6 +12,9 @@ import ProfileScreen from "../ProfileManagement/ProfileScreen";
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
+  // Example: condition to show CompletedTask tab (you can set this to your desired condition)
+  const showCompletedTask = true; // Set this based on your requirement
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -26,6 +29,8 @@ const TabNavigator = () => {
             iconName = "time-outline";
           } else if (route.name === "Profile") {
             iconName = "person-outline";
+          } else if (route.name === "CompletedTask") {
+            iconName = "checkmark-done-outline"; // Icon for CompletedTask
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -55,6 +60,8 @@ const TabNavigator = () => {
         component={ProfileScreen}
         options={{ headerShown: false }}
       />
+      
+     
     </Tab.Navigator>
   );
 };
