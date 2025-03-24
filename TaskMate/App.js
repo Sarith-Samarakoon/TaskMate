@@ -3,7 +3,8 @@ import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AuthScreen from "./components/Login&SignUp/AuthForm";
-import TabNavigator from "./components/MenuBars/TabNavigation"; // Updated bottom navigation
+import TabNavigator from "./components/MenuBars/TabNavigation"; // Import TabNavigator
+import CompletedTaskScreen from "./components/HistoryManagement/CompletedTask";
 import { getCurrentUser } from "./lib/appwriteConfig";
 import { ThemeProvider, useTheme } from "./components/ThemeContext"; // Import ThemeProvider and useTheme
 
@@ -44,6 +45,7 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName={initialRoute}>
+
         <Stack.Screen
           name="Auth"
           component={AuthScreen}
@@ -54,6 +56,13 @@ const AppNavigator = () => {
           component={TabNavigator}
           options={{ headerShown: false }}
         />
+
+        <Stack.Screen
+        name="CompletedTask"
+        component={CompletedTaskScreen}
+        options={{ title: 'Completed Tasks' }}  // Set the title for the CompletedTask screen
+        />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );
