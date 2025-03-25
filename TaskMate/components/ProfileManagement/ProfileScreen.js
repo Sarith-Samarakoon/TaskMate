@@ -1,98 +1,326 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  Image,
   TouchableOpacity,
-  Switch,
+  ActivityIndicator,
+  ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Calendar } from "react-native-calendars";
+import {
+  getCurrentUser,
+  logoutUser,
+  updateProfilePicture,
+} from "../../lib/appwriteConfig";
+import { useNavigation } from "@react-navigation/native";
+import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../ThemeContext";
-import { useNavigation } from "@react-navigation/native"; // Import navigation hook
+import TopBar from "../MenuBars/TopBar";
 
-const CalendarScreen = () => {
-  const navigation = useNavigation(); // Initialize navigation
-  const [selectedDate, setSelectedDate] = useState("2025-03-04");
-  const [googleSync, setGoogleSync] = useState(true);
-  const [outlookSync, setOutlookSync] = useState(false);
+const ProfileScreen = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
   const { theme } = useTheme();
 
-  const events = [
-    { id: "1", title: "Flownuet Project Meeting", time: "8:15 AM - 9:00 AM", color: "#34A853" },
-    { id: "2", title: "Team Meeting Reminder", time: "8:15 AM - 9:00 AM", color: "#FBBC05" },
-    { id: "3", title: "Project Review", time: "8:15 AM - 9:00 AM", color: "#A142F4" },
-  ];
+  useEffect(() => {
+    const fetchUser = async () => {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+      setLoading(false);
+    };
+    fetchUser();
+  }, []);
+
+  const handleLogout = async () => {
+    await logoutUser();
+    navigation.replace("Auth");
+  };
+
+  const handleProfilePictureChange = async () => {
+    try {
+      const newProfilePicUrl = await updateProfilePicture();
+      setUser((prevUser) => ({
+        ...prevUser,
+        profilePicture: newProfilePicUrl,
+      }));
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Top Navigation Bar */}
+    <ScrollView
+      style={[
+        styles.container,
+        theme === "dark" ? styles.darkContainer : styles.lightContainer,
+      ]}
+      contentContainerStyle={styles.scrollContainer}
+    >
+      <TopBar title="Profile" />
+
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#000" />
+          <Ionicons
+            name="arrow-back-outline"
+            size={28}
+            color={theme === "dark" ? "#FFF" : "#333"}
+          />
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>Calendar</Text>
-
-        {/* Reminder Button (Navigates to ReminderScreen) */}
-        <TouchableOpacity onPress={() => navigation.navigate("ReminderScreen")}>
-          <Ionicons name="notifications-outline" size={24} color="#000" />
+        <Text
+          style={[
+            styles.headerTitle,
+            theme === "dark" ? styles.darkText : styles.lightText,
+          ]}
+        >
+          Profile
+        </Text>
+        <TouchableOpacity>
+          <Ionicons
+            name="settings-outline"
+            size={28}
+            color={theme === "dark" ? "#FFF" : "#333"}
+          />
         </TouchableOpacity>
       </View>
-      
-      {/* Calendar Component */}
-      <Calendar
-        onDayPress={(day) => setSelectedDate(day.dateString)}
-        markedDates={{ [selectedDate]: { selected: true, selectedColor: "#007AFF" } }}
-        theme={{
-          selectedDayBackgroundColor: "#007AFF",
-          todayTextColor: "#007AFF",
-          arrowColor: "#007AFF",
-        }}
-      />
 
-      {/* Today's Tasks */}
-      <Text style={styles.sectionTitle}>TODAY'S TASKS</Text>
-      <FlatList
-        data={events}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.taskItem}>
-            <View style={[styles.taskIndicator, { backgroundColor: item.color }]} />
-            <View>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.taskTime}>{item.time}</Text>
-            </View>
-          </View>
-        )}
-      />
+      {/* Profile Section */}
+      <View style={styles.profileContainer}>
+        <Image
+          source={{
+            uri:
+              user?.profilePicture ||
+              "https://i.pinimg.com/736x/38/41/97/384197530d32338dd6caafaf1c6a26c4.jpg",
+          }}
+          style={styles.profileImage}
+        />
+        <TouchableOpacity
+          style={styles.editIcon}
+          onPress={handleProfilePictureChange}
+        >
+          <Ionicons name="camera" size={18} color="#FFF" />
+        </TouchableOpacity>
+        <Text
+          style={[
+            styles.name,
+            theme === "dark" ? styles.darkText : styles.lightText,
+          ]}
+        >
+          {user?.name || "User Name"}
+        </Text>
+        <Text
+          style={[
+            styles.email,
+            theme === "dark" ? styles.darkSubText : styles.lightSubText,
+          ]}
+        >
+          {user?.email || "user@example.com"}
+        </Text>
+      </View>
 
-      {/* Connected Calendars */}
-      <Text style={styles.sectionTitle}>CONNECTED CALENDARS</Text>
-      <View style={styles.calendarSync}>
-        <Text style={styles.calendarText}>Google Calendar</Text>
-        <Switch value={googleSync} onValueChange={setGoogleSync} />
+      {/* User Stats */}
+      <View
+        style={[
+          styles.statsContainer,
+          theme === "dark" ? styles.darkCard : styles.lightCard,
+        ]}
+      >
+        <View style={styles.stat}>
+          <Text
+            style={[
+              styles.statValue,
+              theme === "dark" ? styles.darkText : styles.lightText,
+            ]}
+          >
+            248
+          </Text>
+          <Text
+            style={[
+              styles.statLabel,
+              theme === "dark" ? styles.darkSubText : styles.lightSubText,
+            ]}
+          >
+            Tasks
+          </Text>
+        </View>
+        <View style={styles.stat}>
+          <Text
+            style={[
+              styles.statValue,
+              theme === "dark" ? styles.darkText : styles.lightText,
+            ]}
+          >
+            86%
+          </Text>
+          <Text
+            style={[
+              styles.statLabel,
+              theme === "dark" ? styles.darkSubText : styles.lightSubText,
+            ]}
+          >
+            Completed
+          </Text>
+        </View>
+        <View style={styles.stat}>
+          <Text
+            style={[
+              styles.statValue,
+              theme === "dark" ? styles.darkText : styles.lightText,
+            ]}
+          >
+            12
+          </Text>
+          <Text
+            style={[
+              styles.statLabel,
+              theme === "dark" ? styles.darkSubText : styles.lightSubText,
+            ]}
+          >
+            Reminders
+          </Text>
+        </View>
       </View>
-      <View style={styles.calendarSync}>
-        <Text style={styles.calendarText}>Outlook</Text>
-        <Switch value={outlookSync} onValueChange={setOutlookSync} />
+
+      {/* Menu Options */}
+      <View
+        style={[
+          styles.menu,
+          theme === "dark" ? styles.darkCard : styles.lightCard,
+        ]}
+      >
+        {menuOptions.map((option, index) => (
+          <TouchableOpacity key={index} style={styles.menuItem}>
+            <Ionicons
+              name={option.icon}
+              size={20}
+              color={theme === "dark" ? "#FFF" : "#333"}
+            />
+            <Text
+              style={[
+                styles.menuText,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {option.label}
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme === "dark" ? "#BBB" : "#666"}
+            />
+          </TouchableOpacity>
+        ))}
       </View>
-    </View>
+
+      {/* Logout Button */}
+      <TouchableOpacity
+        style={[
+          styles.logoutButton,
+          theme === "dark" ? styles.darkButton : styles.lightButton,
+        ]}
+        onPress={handleLogout}
+      >
+        <Ionicons name="log-out-outline" size={20} color="#FFF" />
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
+const menuOptions = [
+  { icon: "person-outline", label: "Personal Information" },
+  { icon: "mic-outline", label: "Voice Settings" },
+  { icon: "lock-closed-outline", label: "Privacy & Security" },
+  { icon: "help-circle-outline", label: "Help & Support" },
+];
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
-  header: { flexDirection: "row", justifyContent: "space-between", padding: 15, alignItems: "center" },
+  container: { flex: 1 },
+  darkContainer: { backgroundColor: "#121212" },
+  lightContainer: { backgroundColor: "#F9F9F9" },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    marginBottom: 20,
+  },
   headerTitle: { fontSize: 18, fontWeight: "bold" },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", margin: 15 },
-  taskItem: { flexDirection: "row", alignItems: "center", padding: 15, backgroundColor: "#fff", marginBottom: 10, borderRadius: 8 },
-  taskIndicator: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  taskTitle: { fontSize: 16, fontWeight: "bold" },
-  taskTime: { fontSize: 14, color: "#555" },
-  calendarSync: { flexDirection: "row", justifyContent: "space-between", padding: 15, backgroundColor: "#fff", marginBottom: 10, borderRadius: 8 },
-  calendarText: { fontSize: 16 },
+
+  profileContainer: { alignItems: "center", marginBottom: 20 },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: "#007AFF",
+  },
+  editIcon: {
+    position: "absolute",
+    bottom: 5,
+    right: 10,
+    backgroundColor: "#007AFF",
+    padding: 6,
+    borderRadius: 15,
+  },
+
+  name: { fontSize: 22, fontWeight: "bold", marginTop: 10 },
+  email: { fontSize: 14, marginBottom: 10 },
+
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  stat: { alignItems: "center" },
+  statValue: { fontSize: 18, fontWeight: "bold" },
+  statLabel: { fontSize: 14 },
+
+  menu: { borderRadius: 10 },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  menuText: { flex: 1, marginLeft: 10, fontSize: 16 },
+
+  logoutButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  logoutText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 10,
+  },
+
+  darkCard: { backgroundColor: "#1E1E1E", elevation: 2 },
+  lightCard: { backgroundColor: "#FFF", elevation: 2 },
+
+  darkText: { color: "#FFF" },
+  lightText: { color: "#333" },
+  darkSubText: { color: "#BBB" },
+  lightSubText: { color: "#777" },
+
+  darkButton: { backgroundColor: "#FF5555" },
+  lightButton: { backgroundColor: "#FF3B30" },
 });
 
-export default CalendarScreen;
+export default ProfileScreen;
