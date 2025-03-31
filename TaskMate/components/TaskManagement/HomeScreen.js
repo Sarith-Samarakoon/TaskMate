@@ -8,19 +8,38 @@ import {
   FlatList,
   Modal,
   ScrollView,
+  Image,
 } from "react-native";
 import { getCurrentUser } from "../../lib/appwriteConfig";
 import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import axios from "axios";
+import { MaterialIcons } from "@expo/vector-icons";
+
+// Replace this with your actual image import
+const placeholderImage = require("../../assets/progress-image.png"); // Update this path
 
 const GEMINI_API_KEY = "AIzaSyB4ES75inscnYNssR89EZafbSfm_6qOTxs";
 
 const tasks = [
-  { id: "1", title: "Plan a Weekly Schedule" },
-  { id: "2", title: "Prepare a Shopping List" },
-  { id: "3", title: "Book a Flight" },
-  { id: "4", title: "Write a Report" },
+  {
+    id: "1",
+    title: "Flowunet Project Meeting",
+    time: "8:15 AM - 9:00 AM",
+    description: "Complete UI design review before 3 PM today",
+  },
+  {
+    id: "2",
+    title: "Team Meeting Reminder",
+    time: "8:15 AM - 9:00 AM",
+    description: "Complete UI design review before 3 PM today",
+  },
+  {
+    id: "3",
+    title: "Project Review",
+    time: "8:15 AM - 9:00 AM",
+    description: "Complete UI design review before 3 PM today",
+  },
 ];
 
 const HomeScreen = ({ navigation }) => {
@@ -55,6 +74,7 @@ const HomeScreen = ({ navigation }) => {
       alert("Please select a task first!");
       return;
     }
+
     setAiLoading(true);
     setAiResponse("");
     try {
@@ -65,7 +85,7 @@ const HomeScreen = ({ navigation }) => {
             {
               parts: [
                 {
-                  text: `Provide a structured guide for: ${selectedTask.title}. It should be in 3 steps`,
+                  text: `Provide guidance and tips for completing this task: "${selectedTask.title}". The task details are: ${selectedTask.description}. Give me 3 key steps to complete it effectively, along with some productivity tips. Keep it concise.`,
                 },
               ],
             },
@@ -74,39 +94,25 @@ const HomeScreen = ({ navigation }) => {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      if (response?.data?.candidates && response.data.candidates.length > 0) {
+      if (response?.data?.candidates?.length > 0) {
         const aiContent = response.data.candidates[0]?.content?.parts[0]?.text;
-        setAiResponse(
-          aiContent.split(". ").slice(0, 3).join(". ") + "." ||
-            "No guidance found in the response."
-        );
+        setAiResponse(aiContent || "No guidance found for this task.");
       } else {
         setAiResponse("Unexpected response format from Gemini API.");
       }
     } catch (error) {
       console.error("Error fetching AI response:", error);
-      setAiResponse("Failed to generate AI assistance.");
+      setAiResponse("Failed to generate AI assistance for this task.");
     } finally {
       setAiLoading(false);
       setModalVisible(true);
     }
   };
 
-  if (loading) {
-    return (
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: theme === "dark" ? "#121212" : "#F5F5F5" },
-        ]}
-      >
-        <ActivityIndicator
-          size="large"
-          color={theme === "dark" ? "#FFD700" : "#007AFF"}
-        />
-      </View>
-    );
-  }
+  const getCurrentDate = () => {
+    const options = { month: "short", day: "numeric", year: "numeric" };
+    return new Date().toLocaleDateString("en-US", options).toUpperCase();
+  };
 
   return (
     <View
@@ -116,62 +122,212 @@ const HomeScreen = ({ navigation }) => {
       ]}
     >
       <TopBar title="Home" />
-      <View style={styles.content}>
-        {user && (
-          <>
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#FFD700" />
+        </View>
+      ) : (
+        <ScrollView style={styles.content}>
+          <View style={styles.header}>
             <Text
               style={[
-                styles.title,
-                { color: theme === "dark" ? "#FFD700" : "#333" },
+                styles.greeting,
+                { color: theme === "dark" ? "#FFFFFF" : "#000000" },
               ]}
             >
-              Welcome, {user.name}!
+              Hello {user?.name},
             </Text>
-            <FlatList
-              data={tasks}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.taskItem,
-                    selectedTask?.id === item.id && styles.selectedTask,
-                  ]}
-                  onPress={() => setSelectedTask(item)}
-                >
-                  <Text style={styles.taskTitle}>{item.title}</Text>
-                </TouchableOpacity>
-              )}
-            />
-            <TouchableOpacity
-              style={styles.assistButton}
-              onPress={handleAssistMe}
+            <Text
+              style={[
+                styles.date,
+                { color: theme === "dark" ? "#AAAAAA" : "#666666" },
+              ]}
             >
-              <Text style={styles.assistButtonText}>🧠 Assist Me</Text>
+              {getCurrentDate()}
+            </Text>
+          </View>
+
+          <View style={styles.progressContainer}>
+            <Text
+              style={[
+                styles.progressTitle,
+                { color: theme === "dark" ? "#FFFFFF" : "#000000" },
+              ]}
+            >
+              Weekly Progress
+            </Text>
+            <Text
+              style={[
+                styles.progressSubtitle,
+                { color: theme === "dark" ? "#AAAAAA" : "#666666" },
+              ]}
+            >
+              You're doing great!
+            </Text>
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: "85%" }]} />
+              </View>
+              <Text
+                style={[
+                  styles.progressText,
+                  { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+                ]}
+              >
+                85%
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.progressRow}>
+            <View style={styles.progressImageContainer}>
+              <Image
+                source={placeholderImage}
+                style={styles.progressImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.assistButton,
+                {
+                  backgroundColor: theme === "dark" ? "#333333" : "#007AFF",
+                  opacity: selectedTask ? 1 : 0.6,
+                },
+              ]}
+              onPress={handleAssistMe}
+              disabled={!selectedTask}
+            >
+              <MaterialIcons
+                name="assistant"
+                size={24}
+                color={theme === "dark" ? "#FFD700" : "#FFFFFF"}
+              />
+              <Text
+                style={[
+                  styles.assistButtonText,
+                  { color: theme === "dark" ? "#FFD700" : "#FFFFFF" },
+                ]}
+              >
+                Assist Me
+              </Text>
             </TouchableOpacity>
-          </>
-        )}
-      </View>
+          </View>
+
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: theme === "dark" ? "#FFFFFF" : "#000000" },
+            ]}
+          >
+            TASKS
+          </Text>
+          <TouchableOpacity>
+            <Text
+              style={[
+                styles.seeAllText,
+                { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+              ]}
+            >
+              See All
+            </Text>
+          </TouchableOpacity>
+
+          <FlatList
+            data={tasks}
+            scrollEnabled={false}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => setSelectedTask(item)}
+                style={[
+                  styles.taskItem,
+                  {
+                    backgroundColor: theme === "dark" ? "#1E1E1E" : "#FFFFFF",
+                    borderColor:
+                      selectedTask?.id === item.id
+                        ? theme === "dark"
+                          ? "#FFD700"
+                          : "#007AFF"
+                        : "transparent",
+                    borderWidth: 2,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+                  ]}
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={[
+                    styles.taskTime,
+                    { color: theme === "dark" ? "#AAAAAA" : "#666666" },
+                  ]}
+                >
+                  {item.time}
+                </Text>
+                <Text
+                  style={[
+                    styles.taskDescription,
+                    { color: theme === "dark" ? "#CCCCCC" : "#444444" },
+                  ]}
+                >
+                  {item.description}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
+        </ScrollView>
+      )}
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme === "dark" ? "#1E1E1E" : "#FFFFFF" },
+            ]}
+          >
             <ScrollView>
-              <Text style={styles.aiResponseTitle}>AI Assistance</Text>
+              <Text
+                style={[
+                  styles.aiResponseTitle,
+                  { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+                ]}
+              >
+                ✨ Task Assistance ✨
+              </Text>
+              <Text
+                style={[
+                  styles.taskPrompt,
+                  { color: theme === "dark" ? "#AAAAAA" : "#666666" },
+                ]}
+              >
+                Assistance for: {selectedTask?.title}
+              </Text>
               {aiLoading ? (
                 <ActivityIndicator size="large" color="#007AFF" />
               ) : (
-                <Text style={styles.aiResponseText}>
-                  {aiResponse.split(". ").map((step, index) => (
-                    <Text key={index}>
-                      ✅ {step}
-                      {"\n"}
-                    </Text>
-                  ))}
+                <Text
+                  style={[
+                    styles.aiResponseText,
+                    { color: theme === "dark" ? "#FFFFFF" : "#333333" },
+                  ]}
+                >
+                  {aiResponse}
                 </Text>
               )}
             </ScrollView>
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[
+                styles.closeButton,
+                { backgroundColor: theme === "dark" ? "#333333" : "#007AFF" },
+              ]}
               onPress={() => setModalVisible(false)}
             >
               <Text style={styles.closeButtonText}>Close</Text>
@@ -184,27 +340,122 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { alignItems: "center", padding: 20 },
-  title: { fontSize: 24, fontWeight: "bold" },
-  taskItem: {
-    padding: 15,
-    backgroundColor: "#007AFF",
-    marginVertical: 5,
-    borderRadius: 10,
-    width: "80%",
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+  },
+  header: {
+    marginBottom: 20,
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  date: {
+    fontSize: 16,
+    marginTop: 5,
+  },
+  progressContainer: {
+    marginBottom: 25,
     alignItems: "center",
   },
-  selectedTask: { backgroundColor: "#FFD700" },
-  taskTitle: { color: "#fff", fontSize: 16 },
-  assistButton: {
-    marginTop: 20,
-    backgroundColor: "#007AFF",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+  progressImageContainer: {
+    width: 250,
+    height: 100,
+    marginBottom: 15,
   },
-  assistButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  progressImage: {
+    width: "100%",
+    height: "100%",
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+
+  progressTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  progressSubtitle: {
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: "center",
+  },
+  progressBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 15,
+    width: "100%",
+  },
+  progressBar: {
+    flex: 1,
+    height: 10,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 5,
+    overflow: "hidden",
+    marginRight: 10,
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#FFD700",
+  },
+  progressText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  assistButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 25,
+  },
+  assistButtonText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+  taskItem: {
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  taskTime: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  taskDescription: {
+    fontSize: 14,
+  },
+  seeAllText: {
+    textAlign: "right",
+    fontSize: 16,
+    fontWeight: "medium",
+    marginBottom: 20,
+    marginTop: -34,
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
@@ -212,22 +463,38 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
     width: "90%",
     maxHeight: "80%",
   },
-  aiResponseTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  aiResponseText: { fontSize: 16, color: "#333" },
+  aiResponseTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  taskPrompt: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+    fontStyle: "italic",
+  },
+  aiResponseText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
   closeButton: {
-    marginTop: 10,
-    backgroundColor: "#007AFF",
-    padding: 10,
+    marginTop: 20,
+    padding: 12,
     borderRadius: 10,
     alignItems: "center",
   },
-  closeButtonText: { color: "#fff", fontSize: 16 },
+  closeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 });
 
 export default HomeScreen;
