@@ -1,26 +1,35 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AuthScreen from "./components/Login&SignUp/AuthForm";
-import TabNavigator from "./components/MenuBars/TabNavigation"; // Updated bottom navigation
+import TabNavigator from "./components/MenuBars/TabNavigation";
 import { getCurrentUser } from "./lib/appwriteConfig";
-import { ThemeProvider, useTheme } from "./components/ThemeContext"; // Import ThemeProvider and useTheme
+import { ThemeProvider, useTheme } from "./components/ThemeContext";
+import OnboardingNavigator from "./components/OnboardingScreen/OnboardingNavigator";
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
   const [initialRoute, setInitialRoute] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { theme } = useTheme(); // Correct usage of useTheme inside the ThemeProvider context
+  const { theme } = useTheme();
 
   useEffect(() => {
-    const checkUser = async () => {
-      const user = await getCurrentUser();
-      setInitialRoute(user ? "Home" : "Auth");
+    const checkOnboardingStatus = async () => {
+      const hasCompletedOnboarding = await AsyncStorage.getItem(
+        "onboardingCompleted"
+      );
+      if (!hasCompletedOnboarding) {
+        setInitialRoute("Onboarding");
+      } else {
+        const user = await getCurrentUser();
+        setInitialRoute(user ? "Home" : "Auth");
+      }
       setLoading(false);
     };
-    checkUser();
+    checkOnboardingStatus();
   }, []);
 
   if (loading) {
@@ -44,6 +53,11 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName={initialRoute}>
+        <Stack.Screen
+          name="Onboarding"
+          component={OnboardingNavigator}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name="Auth"
           component={AuthScreen}
