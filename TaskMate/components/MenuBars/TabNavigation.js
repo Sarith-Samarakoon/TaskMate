@@ -2,14 +2,66 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { createStackNavigator } from "@react-navigation/stack";
 
 // Import your screens
 import HomeScreen from "../TaskManagement/HomeScreen";
 import CalendarScreen from "../ReminderManagement/CalenderScreen";
 import HistoryScreen from "../HistoryManagement/HistoryScreen";
 import ProfileScreen from "../ProfileManagement/ProfileScreen";
+import AddTask from "../TaskManagement/AddTask";
+import Screen from "../TaskManagement/Screen";
+import HelpSupport from "../ProfileManagement/Help&Support";
+import PrivacyPolicy from "../ProfileManagement/Privacy&Security";
+import CompletedTask from "../HistoryManagement/CompletedTask";
+import Goals from "../HistoryManagement/Goals";
+import SetGoals from "../HistoryManagement/SetGoals";
+
+// Import hidden screens
+import ReminderScreen from "../ReminderManagement/ReminderScreen";
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+// Stack for the History tab
+const HomeStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HomeScreen" component={HomeScreen} />
+      <Stack.Screen name="Screen" component={Screen} />
+    </Stack.Navigator>
+  );
+};
+
+const ReminderStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="CalendarMain" component={CalendarScreen} />
+      <Stack.Screen name="Reminder" component={ReminderScreen} />
+    </Stack.Navigator>
+  );
+};
+
+const ProfileStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="HelpSupport" component={HelpSupport} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+    </Stack.Navigator>
+  );
+};
+
+const HistoryStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="CompletedTask" component={CompletedTask} />
+      <Stack.Screen name="Goals" component={Goals} />
+      <Stack.Screen name="SetGoals" component={SetGoals} />
+    </Stack.Navigator>
+  );
+};
 
 const CustomTabBarButton = ({ onPress }) => (
   <TouchableOpacity
@@ -46,17 +98,17 @@ const TabNavigator = ({ navigation }) => {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen name="Calendar" component={ReminderStack} />
       <Tab.Screen
         name="Plus"
-        component={HomeScreen} // Temporary, replace with the actual screen
+        component={AddTask} // Temporary, replace with the actual screen
         options={{
           tabBarButton: (props) => <CustomTabBarButton {...props} />,
         }}
       />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="History" component={HistoryStack} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 };

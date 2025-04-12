@@ -8,6 +8,7 @@ import TabNavigator from "./components/MenuBars/TabNavigation";
 import { getCurrentUser } from "./lib/appwriteConfig";
 import { ThemeProvider, useTheme } from "./components/ThemeContext";
 import OnboardingNavigator from "./components/OnboardingScreen/OnboardingNavigator";
+import Notification from "./components/ReminderManagement/NotificationScreen";
 
 const Stack = createStackNavigator();
 
@@ -66,6 +67,11 @@ const AppNavigator = () => {
         <Stack.Screen
           name="Home"
           component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Notification"
+          component={Notification}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

@@ -1,6 +1,8 @@
 import { Client, Account } from "appwrite";
+import { Databases } from "appwrite";
 import { launchImageLibrary } from "react-native-image-picker";
 import { ID } from "appwrite";
+import { Alert } from "react-native";
 import { Storage } from "appwrite"; // Ensure you are using the correct import
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
@@ -10,6 +12,10 @@ client
   .setEndpoint("https://cloud.appwrite.io/v1") // Replace with your Appwrite endpoint
   .setProject("67d2d4400029f32f7259"); // Replace with your Project ID
 
+// Initialize Appwrite Databases
+const databases = new Databases(client);
+
+// Initialize Appwrite Account
 const account = new Account(client);
 const storage = new Storage(client);
 const bucketId = "67dbcd080010eecc3c4d"; // Replace with your Appwrite bucket ID
@@ -125,4 +131,65 @@ export const updateProfilePicture = async () => {
   }
 };
 
-export { account };
+const uploadImageToAppwrite = async (uri) => {
+  try {
+    const file = await storage.createFile(bucketId, ID.unique(), uri);
+    return file.$id;
+  } catch (error) {
+    console.error("Image Upload Error:", error);
+    return null;
+  }
+};
+
+// Initialize Appwrite Databases
+const databaseId = "67de6cb1003c63a59683"; // Replace with your actual Database ID
+const collectionId = "67e15b720007d994f573"; // Replace with your actual Collection ID
+
+export const handleCreateTask = async (
+  title,
+  description,
+  priority,
+  Category,
+  deadline,
+  image
+) => {
+  if (!title.trim()) {
+    Alert.alert("Validation Error", "Title is required.");
+    return;
+  }
+
+  if (!deadline) {
+    Alert.alert("Validation Error", "Deadline is required.");
+    return;
+  }
+
+  let imageFileId = null;
+  if (image) {
+    imageFileId = await uploadImageToAppwrite(image);
+  }
+
+  try {
+    const newTask = {
+      title,
+      description,
+      priority,
+      Deadline: deadline.toISOString(), // Ensure the deadline is formatted correctly
+      Category,
+    };
+
+    const response = await databases.createDocument(
+      databaseId,
+      collectionId,
+      ID.unique(),
+      newTask
+    );
+
+    Alert.alert("Task Created", "Your task has been successfully saved.");
+  } catch (error) {
+    console.error("Error creating task:", error);
+    Alert.alert("Error", "Failed to create task.");
+  }
+};
+
+// Export
+export { client, databases, account };

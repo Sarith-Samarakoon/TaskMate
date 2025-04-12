@@ -199,26 +199,25 @@ const ProfileScreen = () => {
         ]}
       >
         {menuOptions.map((option, index) => (
-          <TouchableOpacity key={index} style={styles.menuItem}>
-            <Ionicons
-              name={option.icon}
-              size={20}
-              color={theme === "dark" ? "#FFF" : "#333"}
-            />
-            <Text
-              style={[
-                styles.menuText,
-                theme === "dark" ? styles.darkText : styles.lightText,
-              ]}
-            >
+          <TouchableOpacity
+            key={index}
+            style={styles.menuItem}
+            onPress={() => {
+              if (option.label === "Help & Support") {
+                navigation.navigate("HelpSupport"); // Ensure this is the correct screen name
+              } else if (option.label === "Privacy & Security") {
+                navigation.navigate("PrivacyPolicy"); // Ensure this matches your navigation stack
+              }
+            }}
+          >
+            <Ionicons name={option.icon} size={20} color={theme === "dark" ? "#FFF" : "#333"} />
+            <Text style={[styles.menuText, theme === "dark" ? styles.darkText : styles.lightText]}>
               {option.label}
             </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={theme === "dark" ? "#BBB" : "#666"}
-            />
+            <Ionicons name="chevron-forward" size={20} color={theme === "dark" ? "#BBB" : "#666"} />
           </TouchableOpacity>
+
+
         ))}
       </View>
 

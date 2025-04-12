@@ -50,6 +50,7 @@ const CreateTaskScreen = () => {
     };
 
     // Function to create a task
+
     const handleTaskCreation = async () => {
         if (!title.trim()) {
             Alert.alert("Validation Error", "Title is required.");
@@ -59,6 +60,9 @@ const CreateTaskScreen = () => {
         try {
             await handleCreateTask(title, description, priority, category, deadline, image);
             Alert.alert("Success", "Task created successfully!");
+
+            // Navigate to the desired screen (e.g., Screen.js) after task creation
+            navigation.navigate("Screen"); // Replace "Screen" with your target screen name
         } catch (error) {
             console.error("Task Creation Error:", error);
             Alert.alert("Error", "Failed to create task.");
@@ -72,7 +76,7 @@ const CreateTaskScreen = () => {
                 { backgroundColor: isDark ? "#121212" : "#ffffff" },
             ]}
         >
-            <TopBar title="New Task" />
+
 
             <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>Title</Text>
             <TextInput

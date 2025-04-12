@@ -223,7 +223,7 @@ const HomeScreen = ({ navigation }) => {
           >
             TASKS
           </Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("Screen")}>
             <Text
               style={[
                 styles.seeAllText,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   progressImageContainer: {
-    width: 250,
+    width: 150,
     height: 100,
     marginBottom: 15,
   },
