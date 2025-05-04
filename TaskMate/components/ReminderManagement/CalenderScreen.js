@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,15 +9,16 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  Dimensions,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
 import { useTheme } from "../ThemeContext";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import TopBar from "../MenuBars/TopBar";
 import { Client, Databases } from "appwrite";
 import moment from "moment";
-import DatePicker from "react-native-date-picker";
 
 // Appwrite setup
 const client = new Client();
@@ -27,6 +28,8 @@ client
 const databases = new Databases(client);
 const databaseId = "67de6cb1003c63a59683";
 const tasksCollectionId = "67e15b720007d994f573";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState("2025-03-04");
@@ -38,20 +41,27 @@ const CalendarScreen = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
   const [note, setNote] = useState("");
-  const [time, setTime] = useState(new Date());
+  const [hours, setHours] = useState("12");
+  const [minutes, setMinutes] = useState("00");
   const [isPM, setIsPM] = useState(false);
+  const [reminderDate, setReminderDate] = useState(
+    moment().format("YYYY-MM-DD")
+  );
+  const [error, setError] = useState("");
+  const modalAnim = useRef(new Animated.Value(0)).current;
 
   const colors = {
     light: {
       background: "#F5F5F5",
       card: "#FFFFFF",
-      text: "#000000",
+      text: "#1A1A1A",
       subText: "#757575",
       accent: "#007AFF",
       modalBg: "#FFFFFF",
-      inputBg: "#F5F7FA",
+      inputBg: "#F8F9FA",
+      border: "#E0E0E0",
+      error: "#FF3B30",
     },
     dark: {
       background: "#121212",
@@ -60,15 +70,38 @@ const CalendarScreen = () => {
       subText: "#AAAAAA",
       accent: "#007AFF",
       modalBg: "#2C2C2C",
-      inputBg: "#2C2C2C",
+      inputBg: "#333333",
+      border: "#444444",
+      error: "#FF453A",
     },
   };
 
   const themeColors = colors[theme];
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
+  const animateModal = (visible) => {
+    console.log("Animating modal, visible:", visible);
+    Animated.timing(modalAnim, {
+      toValue: visible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      console.log("Animation completed, modalVisible:", modalVisible);
+      if (!visible) {
+        setModalVisible(false);
+      }
+    });
+  };
+
+  const openModal = () => {
+    console.log("Opening modal");
+    setModalVisible(true);
+    animateModal(true);
+  };
+
+  const closeModal = () => {
+    console.log("Closing modal");
+    animateModal(false);
+  };
 
   const fetchTasks = async () => {
     try {
@@ -83,6 +116,12 @@ const CalendarScreen = () => {
       setLoading(false);
     }
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTasks();
+    }, [])
+  );
 
   const formatDeadline = (deadline) => {
     return moment(deadline).format("MMMM Do YYYY, h:mm a");
@@ -107,8 +146,10 @@ const CalendarScreen = () => {
       <TouchableOpacity
         style={styles.reminderButton}
         onPress={() => {
+          console.log("Task selected:", item.title);
           setSelectedTask(item);
-          setModalVisible(true);
+          setReminderDate(selectedDate);
+          openModal();
         }}
       >
         <Ionicons name="alarm-outline" size={24} color={themeColors.accent} />
@@ -118,8 +159,37 @@ const CalendarScreen = () => {
 
   const handleSetReminder = async () => {
     try {
-      if (!selectedTask) return alert("No task selected.");
-      const formattedTime = moment(time).format("HH:mm");
+      if (!selectedTask) {
+        setError("No task selected.");
+        return;
+      }
+
+      const parsedHours = parseInt(hours) || 12;
+      const parsedMinutes = parseInt(minutes) || 0;
+
+      if (parsedHours < 1 || parsedHours > 12) {
+        setError("Hours must be between 1 and 12.");
+        return;
+      }
+      if (parsedMinutes < 0 || parsedMinutes > 59) {
+        setError("Minutes must be between 00 and 59.");
+        return;
+      }
+
+      const adjustedHours = isPM ? (parsedHours % 12) + 12 : parsedHours % 12;
+      const reminderDateTime = moment(
+        `${reminderDate} ${adjustedHours}:${parsedMinutes}`,
+        "YYYY-MM-DD H:mm"
+      );
+      const deadlineDateTime = moment(selectedTask.Deadline);
+
+      if (!reminderDateTime.isBefore(deadlineDateTime)) {
+        setError("Reminder must be set before the task's deadline.");
+        return;
+      }
+
+      const formattedDateTime = reminderDateTime.format("DD/MM/YYYY h:mm A");
+      const formattedDate = reminderDateTime.format("DD/MM/YYYY");
 
       await databases.createDocument(
         databaseId,
@@ -128,18 +198,23 @@ const CalendarScreen = () => {
         {
           TaskTitle: selectedTask.title,
           Date: selectedDate,
-          Note: note,
-          SetTime: formattedTime,
+          Note: note || null,
+          SetTime: formattedDateTime,
+          SetDate: formattedDate,
         }
       );
 
-      alert(
-        `Reminder set for ${selectedTask.title} at ${formattedTime} on ${selectedDate}`
-      );
-      setModalVisible(false);
+      alert(`Reminder set for ${selectedTask.title} at ${formattedDateTime}`);
+      closeModal();
+      setHours("12");
+      setMinutes("00");
+      setIsPM(false);
+      setNote("");
+      setReminderDate(moment().format("YYYY-MM-DD"));
+      setError("");
     } catch (error) {
       console.error("Error setting reminder:", error);
-      alert("Failed to set reminder.");
+      setError("Failed to set reminder. Please try again.");
     }
   };
 
@@ -147,10 +222,39 @@ const CalendarScreen = () => {
 
   const handleDayPress = (day) => {
     const selectedDay = moment(day.dateString);
-    if (selectedDay.isAfter(today, "day")) {
+    const deadlineDate = moment(selectedTask?.Deadline);
+
+    if (!selectedTask || !deadlineDate.isValid()) {
+      return alert("Please select a valid task with a valid deadline.");
+    }
+
+    if (
+      selectedDay.isAfter(today, "day") &&
+      selectedDay.isSameOrBefore(deadlineDate, "day")
+    ) {
       setSelectedDate(day.dateString);
     } else {
-      alert("You can only select future dates.");
+      alert("It should be a future date on or before the task's deadline.");
+    }
+  };
+
+  const handleReminderDayPress = (day) => {
+    const selectedDay = moment(day.dateString);
+    const deadlineDate = moment(selectedTask?.Deadline);
+
+    if (!selectedTask || !deadlineDate.isValid()) {
+      return alert("Please select a valid task with a valid deadline.");
+    }
+
+    if (
+      selectedDay.isAfter(today, "day") &&
+      selectedDay.isSameOrBefore(deadlineDate, "day")
+    ) {
+      setReminderDate(day.dateString);
+    } else {
+      alert(
+        "It should be a future reminder date on or before the task's deadline."
+      );
     }
   };
 
@@ -196,7 +300,7 @@ const CalendarScreen = () => {
             arrowColor: themeColors.accent,
             monthTextColor: themeColors.text,
           }}
-          style={styles.calender}
+          style={styles.calendar}
         />
 
         <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
@@ -231,160 +335,246 @@ const CalendarScreen = () => {
         </View>
 
         {/* Reminder Modal */}
-        <Modal visible={modalVisible} animationType="slide" transparent>
+        <Modal
+          visible={modalVisible}
+          animationType="none"
+          transparent
+          onRequestClose={closeModal}
+        >
           <View style={styles.modalBackdrop}>
-            <View
+            <Animated.View
               style={[
                 styles.modalContent,
-                { backgroundColor: themeColors.modalBg },
+                {
+                  backgroundColor: themeColors.modalBg,
+                  transform: [
+                    {
+                      scale: modalAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.95, 1],
+                      }),
+                    },
+                    {
+                      translateY: modalAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                  opacity: modalAnim,
+                },
               ]}
             >
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: themeColors.text }]}>
-                  🔔 Set Reminder
-                </Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={themeColors.text} />
-                </TouchableOpacity>
-              </View>
-
-              {selectedTask && (
-                <>
-                  <Text style={{ fontWeight: "bold", color: themeColors.text }}>
-                    Title: {selectedTask.title}
-                  </Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.modalHeader}>
                   <Text
-                    style={{
-                      fontWeight: "bold",
-                      marginTop: 15,
-                      color: themeColors.text,
-                    }}
+                    style={[styles.modalTitle, { color: themeColors.text }]}
                   >
-                    Deadline: {formatDeadline(selectedTask.Deadline)}
+                    Set Reminder
                   </Text>
-                </>
-              )}
+                  <TouchableOpacity onPress={closeModal}>
+                    <Ionicons name="close" size={24} color={themeColors.text} />
+                  </TouchableOpacity>
+                </View>
 
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: themeColors.inputBg,
-                    color: themeColors.text,
-                  },
-                ]}
-                placeholder="Add a note..."
-                placeholderTextColor={theme === "dark" ? "#999" : "#666"}
-                value={note}
-                onChangeText={setNote}
-              />
+                {selectedTask && (
+                  <View style={styles.taskInfo}>
+                    <Text
+                      style={[styles.taskInfoText, { color: themeColors.text }]}
+                    >
+                      Task: {selectedTask.title}
+                    </Text>
+                    <Text
+                      style={[styles.taskInfoText, { color: themeColors.text }]}
+                    >
+                      Deadline: {formatDeadline(selectedTask.Deadline)}
+                    </Text>
+                  </View>
+                )}
 
-              <Text
-                style={{
-                  fontWeight: "bold",
-                  marginTop: 15,
-                  color: themeColors.text,
-                }}
-              >
-                Set Time
-              </Text>
-              <View style={styles.timeInputRow}>
-                <TextInput
-                  style={[
-                    styles.timeInput,
-                    {
-                      backgroundColor: themeColors.inputBg,
-                      color: themeColors.text,
-                    },
-                  ]}
-                  keyboardType="numeric"
-                  value={time.getHours().toString().padStart(2, "0")}
-                  onChangeText={(val) => {
-                    const newTime = new Date(time);
-                    newTime.setHours(parseInt(val) || 0);
-                    setTime(newTime);
-                  }}
-                />
-                <Text
-                  style={[
-                    {
-                      fontSize: 18,
-                      fontWeight: "bold",
-                      color: themeColors.text,
-                    },
-                  ]}
-                >
-                  :
+                {error ? (
+                  <Text
+                    style={[styles.errorText, { color: themeColors.error }]}
+                  >
+                    {error}
+                  </Text>
+                ) : null}
+
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>
+                  Reminder Note
                 </Text>
                 <TextInput
                   style={[
-                    styles.timeInput,
+                    styles.input,
                     {
                       backgroundColor: themeColors.inputBg,
                       color: themeColors.text,
+                      borderColor: error
+                        ? themeColors.error
+                        : themeColors.border,
                     },
                   ]}
-                  keyboardType="numeric"
-                  value={time.getMinutes().toString().padStart(2, "0")}
-                  onChangeText={(val) => {
-                    const newTime = new Date(time);
-                    newTime.setMinutes(parseInt(val) || 0);
-                    setTime(newTime);
-                  }}
+                  placeholder="Add a note..."
+                  placeholderTextColor={theme === "dark" ? "#999" : "#666"}
+                  value={note}
+                  onChangeText={setNote}
+                  multiline
+                  numberOfLines={3}
                 />
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: !isPM ? "#FFEB3B" : "#E0E0E0",
-                    padding: 8,
-                    borderRadius: 5,
-                    marginLeft: 10,
-                  }}
-                  onPress={() => setIsPM(false)}
-                >
-                  <Text
-                    style={{
-                      fontWeight: "bold",
-                      color: !isPM ? "blue" : "black",
-                    }}
-                  >
-                    AM
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: isPM ? "#FFEB3B" : "#E0E0E0",
-                    padding: 8,
-                    borderRadius: 5,
-                    marginLeft: 5,
-                  }}
-                  onPress={() => setIsPM(true)}
-                >
-                  <Text
-                    style={{
-                      fontWeight: "bold",
-                      color: isPM ? "blue" : "black",
-                    }}
-                  >
-                    PM
-                  </Text>
-                </TouchableOpacity>
-              </View>
 
-              <TouchableOpacity
-                style={{
-                  backgroundColor: "#3D5AFE",
-                  padding: 15,
-                  borderRadius: 5,
-                  marginTop: 15,
-                  alignItems: "center",
-                }}
-                onPress={handleSetReminder}
-              >
-                <Text style={{ color: "white", fontWeight: "bold" }}>
-                  Set Reminder
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>
+                  Select Reminder Date
                 </Text>
-              </TouchableOpacity>
-            </View>
+                <Calendar
+                  onDayPress={handleReminderDayPress}
+                  markedDates={{
+                    [reminderDate]: {
+                      selected: true,
+                      selectedColor: themeColors.accent,
+                    },
+                  }}
+                  minDate={today}
+                  theme={{
+                    backgroundColor: themeColors.modalBg,
+                    calendarBackground: themeColors.modalBg,
+                    textSectionTitleColor: themeColors.subText,
+                    selectedDayBackgroundColor: themeColors.accent,
+                    selectedDayTextColor: "#fff",
+                    todayTextColor: themeColors.accent,
+                    dayTextColor: themeColors.text,
+                    arrowColor: themeColors.accent,
+                    monthTextColor: themeColors.text,
+                  }}
+                  style={[
+                    styles.reminderCalendar,
+                    { width: SCREEN_WIDTH - 80 },
+                  ]}
+                />
+
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>
+                  Set Reminder Time
+                </Text>
+                <View style={styles.timeInputRow}>
+                  <TextInput
+                    style={[
+                      styles.timeInput,
+                      {
+                        backgroundColor: themeColors.inputBg,
+                        color: themeColors.text,
+                        borderColor: error
+                          ? themeColors.error
+                          : themeColors.border,
+                      },
+                    ]}
+                    keyboardType="numeric"
+                    value={hours}
+                    onChangeText={(val) => {
+                      setHours(val);
+                      setError("");
+                    }}
+                    placeholder="12"
+                    maxLength={2}
+                  />
+                  <Text
+                    style={[styles.timeSeparator, { color: themeColors.text }]}
+                  >
+                    :
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.timeInput,
+                      {
+                        backgroundColor: themeColors.inputBg,
+                        color: themeColors.text,
+                        borderColor: error
+                          ? themeColors.error
+                          : themeColors.border,
+                      },
+                    ]}
+                    keyboardType="numeric"
+                    value={minutes}
+                    onChangeText={(val) => {
+                      setMinutes(val);
+                      setError("");
+                    }}
+                    placeholder="00"
+                    maxLength={2}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.amPmButton,
+                      {
+                        backgroundColor: !isPM
+                          ? themeColors.accent
+                          : themeColors.inputBg,
+                        borderColor: themeColors.border,
+                      },
+                    ]}
+                    onPress={() => setIsPM(false)}
+                  >
+                    <Text
+                      style={[
+                        styles.amPmText,
+                        { color: !isPM ? "#FFFFFF" : themeColors.text },
+                      ]}
+                    >
+                      AM
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.amPmButton,
+                      {
+                        backgroundColor: isPM
+                          ? themeColors.accent
+                          : themeColors.inputBg,
+                        borderColor: themeColors.border,
+                      },
+                    ]}
+                    onPress={() => setIsPM(true)}
+                  >
+                    <Text
+                      style={[
+                        styles.amPmText,
+                        { color: isPM ? "#FFFFFF" : themeColors.text },
+                      ]}
+                    >
+                      PM
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.cancelButton,
+                      {
+                        borderColor: themeColors.border,
+                        backgroundColor: themeColors.inputBg,
+                      },
+                    ]}
+                    onPress={closeModal}
+                  >
+                    <Text
+                      style={[styles.buttonText, { color: themeColors.text }]}
+                    >
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.setButton,
+                      { backgroundColor: themeColors.accent },
+                    ]}
+                    onPress={handleSetReminder}
+                  >
+                    <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+                      Set Reminder
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </Animated.View>
           </View>
         </Modal>
       </View>
@@ -399,8 +589,14 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
   },
-  headerTitle: { fontSize: 18, fontWeight: "bold" },
-  addButton: { padding: 10, borderRadius: 5 },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  addButton: {
+    padding: 10,
+    borderRadius: 5,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
@@ -413,41 +609,165 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
+    alignItems: "center",
   },
-  taskIndicator: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  taskTitle: { fontSize: 14, fontWeight: "bold" },
-  taskTime: { fontSize: 12 },
-  reminderButton: { justifyContent: "center", alignItems: "center" },
+  taskIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  taskTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  taskTime: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  reminderButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 5,
+  },
   calendarSync: {
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 15,
+    alignItems: "center",
   },
-  calendarText: { fontSize: 14, fontWeight: "bold" },
-  loadingText: { textAlign: "center", marginTop: 20, fontSize: 16 },
+  calendarText: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  loadingText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+  },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
-    padding: 20,
+    alignItems: "center",
   },
-  modalContent: { padding: 20, borderRadius: 10 },
+  modalContent: {
+    borderRadius: 16,
+    padding: 20,
+    width: SCREEN_WIDTH - 40,
+    maxHeight: "85%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    alignItems: "center",
+    marginBottom: 20,
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold" },
-  input: { padding: 10, borderRadius: 5, marginTop: 10 },
-  timeInputRow: { flexDirection: "row", alignItems: "center", marginTop: 5 },
-  timeInput: {
-    width: 50,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  taskInfo: {
+    marginBottom: 20,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  taskInfoText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  errorText: {
+    fontSize: 13,
+    marginBottom: 12,
     textAlign: "center",
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 15,
+    marginBottom: 8,
+    letterSpacing: 0.2,
+  },
+  input: {
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    fontSize: 14,
+    minHeight: 80,
+    lineHeight: 20,
+  },
+  reminderCalendar: {
+    borderRadius: 10,
+    marginBottom: 15,
+    padding: 10,
+    overflow: "hidden",
+  },
+  timeInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
+    marginBottom: 20,
+  },
+  timeInput: {
+    width: 60,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "500",
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginHorizontal: 5,
+  },
+  timeSeparator: {
     fontSize: 18,
     fontWeight: "bold",
     marginHorizontal: 5,
-    padding: 5,
-    borderRadius: 5,
+  },
+  amPmButton: {
+    padding: 12,
+    borderRadius: 10,
+    marginLeft: 10,
+    minWidth: 60,
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  amPmText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    marginRight: 10,
+  },
+  setButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
 });
 

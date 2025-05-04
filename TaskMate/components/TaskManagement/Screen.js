@@ -9,13 +9,11 @@ import {
   TouchableOpacity,
   Modal,
   Button,
-  Alert,
 } from "react-native";
 import { getCurrentUser, databases } from "../../lib/appwriteConfig";
 import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import Voice from "@react-native-voice/voice";
 
 const Screen = ({ navigation }) => {
   const [user, setUser] = useState(null);
@@ -28,8 +26,6 @@ const Screen = ({ navigation }) => {
   const [taskToEdit, setTaskToEdit] = useState(null);
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState("All");
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [voiceResult, setVoiceResult] = useState("");
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -54,60 +50,6 @@ const Screen = ({ navigation }) => {
       setTasks(response.documents);
     } catch (error) {
       console.error("Error fetching tasks:", error);
-    }
-  };
-
-  const startVoiceRecognition = async () => {
-    try {
-      await Voice.start("en-US");
-      setIsVoiceActive(true);
-    } catch (e) {
-      console.error("Error starting voice recognition:", e);
-      Alert.alert("Error", "Could not start voice recognition.");
-    }
-  };
-
-  const stopVoiceRecognition = async () => {
-    try {
-      await Voice.stop();
-      setIsVoiceActive(false);
-    } catch (e) {
-      console.error("Error stopping voice recognition:", e);
-    }
-  };
-
-  const handleVoiceCommand = async (command) => {
-    if (!command) return;
-
-    if (command.includes("mark all tasks as completed")) {
-      try {
-        const updatePromises = tasks.map((task) =>
-          databases.updateDocument(
-            "67de6cb1003c63a59683",
-            "67e15b720007d994f573",
-            task.$id,
-            { completed: true }
-          )
-        );
-        await Promise.all(updatePromises);
-        fetchTasks();
-        Alert.alert("Success", "All tasks marked as completed.");
-      } catch (error) {
-        console.error("Error marking all tasks as completed:", error);
-        Alert.alert("Error", "Failed to mark all tasks as completed.");
-      }
-    } else if (command.includes("mark task")) {
-      const taskTitle = command
-        .replace("mark task", "")
-        .replace("as completed", "")
-        .trim();
-      const task = tasks.find((t) => t.title.toLowerCase().includes(taskTitle));
-      if (task) {
-        await markTaskAsCompleted(task.$id);
-        Alert.alert("Success", `Task "${task.title}" marked as completed.`);
-      } else {
-        Alert.alert("Error", `Task "${taskTitle}" not found.`);
-      }
     }
   };
 
@@ -287,35 +229,6 @@ const Screen = ({ navigation }) => {
           size={20}
           color={theme === "dark" ? "#fff" : "#999"}
         />
-      </View>
-
-      <View style={styles.voiceControlContainer}>
-        <TouchableOpacity
-          style={[
-            styles.voiceButton,
-            { backgroundColor: isVoiceActive ? "#FF4D4F" : "#1E88E5" },
-          ]}
-          onPress={isVoiceActive ? stopVoiceRecognition : startVoiceRecognition}
-        >
-          <Ionicons
-            name={isVoiceActive ? "mic-off" : "mic"}
-            size={24}
-            color="#fff"
-          />
-          <Text style={styles.voiceButtonText}>
-            {isVoiceActive ? "Stop Voice" : "Start Voice"}
-          </Text>
-        </TouchableOpacity>
-        {voiceResult ? (
-          <Text
-            style={[
-              styles.voiceResult,
-              { color: theme === "dark" ? "#ccc" : "#555" },
-            ]}
-          >
-            Recognized: {voiceResult}
-          </Text>
-        ) : null}
       </View>
 
       <View style={styles.tabsContainer}>
@@ -664,28 +577,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-  },
-  voiceControlContainer: {
-    marginHorizontal: 10,
-    marginBottom: 10,
-  },
-  voiceButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    borderRadius: 8,
-    justifyContent: "center",
-  },
-  voiceButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
-  voiceResult: {
-    fontSize: 14,
-    marginTop: 5,
-    textAlign: "center",
   },
   tabsContainer: {
     flexDirection: "row",
