@@ -8,19 +8,17 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import {
-  getCurrentUser,
-  logoutUser,
-  updateProfilePicture,
-} from "../../lib/appwriteConfig";
+import { getCurrentUser } from "../../lib/appwriteConfig";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../ThemeContext";
 import TopBar from "../MenuBars/TopBar";
+import { ProgressBar } from "react-native-paper"; // For progress bars
 
 const ProfileScreen = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("Status"); // Manage active tab
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -32,11 +30,6 @@ const ProfileScreen = () => {
     };
     fetchUser();
   }, []);
-
-  const handleLogout = async () => {
-    await logoutUser();
-    navigation.replace("Auth");
-  };
 
   const handleProfilePictureChange = async () => {
     try {
@@ -57,6 +50,94 @@ const ProfileScreen = () => {
       </View>
     );
   }
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "Status":
+        return (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Completed Tasks
+              </Text>
+              <View style={styles.progressRow}>
+                <ProgressBar
+                  progress={5 / 8} // 5 out of 8
+                  color="#FFD700"
+                  style={styles.progressBar}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  5/8
+                </Text>
+              </View>
+            </View>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Completed Goals
+              </Text>
+              <View style={styles.progressRow}>
+                <ProgressBar
+                  progress={3 / 8} // 3 out of 8
+                  color="#FFD700"
+                  style={styles.progressBar}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  3/8
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      case "Achievement":
+        return (
+          <View style={styles.tabContent}>
+            <Text
+              style={[
+                styles.tabContentText,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Achievements Coming Soon!
+            </Text>
+          </View>
+        );
+      case "Rewards":
+        return (
+          <View style={styles.tabContent}>
+            <Text
+              style={[
+                styles.tabContentText,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Rewards Coming Soon!
+            </Text>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <ScrollView
@@ -108,7 +189,7 @@ const ProfileScreen = () => {
           style={styles.editIcon}
           onPress={handleProfilePictureChange}
         >
-          <Ionicons name="camera" size={18} color="#FFF" />
+          <Ionicons name="pencil" size={18} color="#FFF" />
         </TouchableOpacity>
         <Text
           style={[
@@ -116,7 +197,7 @@ const ProfileScreen = () => {
             theme === "dark" ? styles.darkText : styles.lightText,
           ]}
         >
-          {user?.name || "User Name"}
+          {user?.name || "Nuwan Vithanage"}
         </Text>
         <Text
           style={[
@@ -124,72 +205,39 @@ const ProfileScreen = () => {
             theme === "dark" ? styles.darkSubText : styles.lightSubText,
           ]}
         >
-          {user?.email || "user@example.com"}
+          {user?.email || "nuwan12@gmail.com"}
         </Text>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>Active</Text>
+        </View>
       </View>
 
-      {/* User Stats */}
-      <View
-        style={[
-          styles.statsContainer,
-          theme === "dark" ? styles.darkCard : styles.lightCard,
-        ]}
-      >
-        <View style={styles.stat}>
-          <Text
-            style={[
-              styles.statValue,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        {["Status", "Achievement", "Rewards"].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tab, activeTab === tab ? styles.activeTab : null]}
+            onPress={() => setActiveTab(tab)}
           >
-            248
-          </Text>
-          <Text
-            style={[
-              styles.statLabel,
-              theme === "dark" ? styles.darkSubText : styles.lightSubText,
-            ]}
-          >
-            Tasks
-          </Text>
-        </View>
-        <View style={styles.stat}>
-          <Text
-            style={[
-              styles.statValue,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            86%
-          </Text>
-          <Text
-            style={[
-              styles.statLabel,
-              theme === "dark" ? styles.darkSubText : styles.lightSubText,
-            ]}
-          >
-            Completed
-          </Text>
-        </View>
-        <View style={styles.stat}>
-          <Text
-            style={[
-              styles.statValue,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            12
-          </Text>
-          <Text
-            style={[
-              styles.statLabel,
-              theme === "dark" ? styles.darkSubText : styles.lightSubText,
-            ]}
-          >
-            Reminders
-          </Text>
-        </View>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab
+                  ? styles.activeTabText
+                  : theme === "dark"
+                  ? styles.darkText
+                  : styles.lightText,
+              ]}
+            >
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
+
+      {/* Tab Content */}
+      {renderTabContent()}
 
       {/* Menu Options */}
       <View
@@ -204,34 +252,33 @@ const ProfileScreen = () => {
             style={styles.menuItem}
             onPress={() => {
               if (option.label === "Help & Support") {
-                navigation.navigate("HelpSupport"); // Ensure this is the correct screen name
+                navigation.navigate("HelpSupport");
               } else if (option.label === "Privacy & Security") {
-                navigation.navigate("PrivacyPolicy"); // Ensure this matches your navigation stack
+                navigation.navigate("PrivacyPolicy");
               }
             }}
           >
-            <Ionicons name={option.icon} size={20} color={theme === "dark" ? "#FFF" : "#333"} />
-            <Text style={[styles.menuText, theme === "dark" ? styles.darkText : styles.lightText]}>
+            <Ionicons
+              name={option.icon}
+              size={20}
+              color={theme === "dark" ? "#FFF" : "#333"}
+            />
+            <Text
+              style={[
+                styles.menuText,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
               {option.label}
             </Text>
-            <Ionicons name="chevron-forward" size={20} color={theme === "dark" ? "#BBB" : "#666"} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme === "dark" ? "#BBB" : "#666"}
+            />
           </TouchableOpacity>
-
-
         ))}
       </View>
-
-      {/* Logout Button */}
-      <TouchableOpacity
-        style={[
-          styles.logoutButton,
-          theme === "dark" ? styles.darkButton : styles.lightButton,
-        ]}
-        onPress={handleLogout}
-      >
-        <Ionicons name="log-out-outline" size={20} color="#FFF" />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -247,47 +294,89 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   darkContainer: { backgroundColor: "#121212" },
   lightContainer: { backgroundColor: "#F9F9F9" },
+  scrollContainer: { paddingBottom: 80 },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
-    marginBottom: 20,
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   headerTitle: { fontSize: 18, fontWeight: "bold" },
 
-  profileContainer: { alignItems: "center", marginBottom: 20 },
+  profileContainer: { alignItems: "center", marginVertical: 20 },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: "#007AFF",
+    borderColor: "#00FF00", // Green border as in screenshot
   },
   editIcon: {
     position: "absolute",
-    bottom: 5,
-    right: 10,
+    top: 0,
+    right: 130,
     backgroundColor: "#007AFF",
     padding: 6,
     borderRadius: 15,
   },
-
   name: { fontSize: 22, fontWeight: "bold", marginTop: 10 },
-  email: { fontSize: 14, marginBottom: 10 },
+  email: { fontSize: 14, marginBottom: 5 },
+  statusBadge: {
+    backgroundColor: "#00FF00",
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  statusText: { color: "#FFF", fontSize: 12, fontWeight: "bold" },
 
-  statsContainer: {
+  tabsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
+    marginVertical: 10,
+  },
+  tab: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#FF00FF", // Purple underline as in screenshot
+  },
+  tabText: { fontSize: 16, fontWeight: "bold" },
+  activeTabText: { color: "#FF00FF", fontWeight: "bold" },
+
+  progressContainer: {
+    marginHorizontal: 20,
     padding: 15,
     borderRadius: 10,
+    backgroundColor: "#FFF",
+    elevation: 2,
     marginBottom: 20,
   },
-  stat: { alignItems: "center" },
-  statValue: { fontSize: 18, fontWeight: "bold" },
-  statLabel: { fontSize: 14 },
+  progressItem: { marginBottom: 15 },
+  progressLabel: { fontSize: 16, fontWeight: "bold", marginBottom: 5 },
+  progressRow: { flexDirection: "row", alignItems: "center" },
+  progressBar: { flex: 1, height: 10, borderRadius: 5, marginRight: 10 },
+  progressValue: { fontSize: 14 },
 
-  menu: { borderRadius: 10 },
+  tabContent: {
+    alignItems: "center",
+    padding: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFF",
+    marginHorizontal: 20,
+    elevation: 2,
+  },
+  tabContentText: { fontSize: 16 },
+
+  menu: {
+    marginHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFF",
+    elevation: 2,
+  },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -296,20 +385,6 @@ const styles = StyleSheet.create({
   },
   menuText: { flex: 1, marginLeft: 10, fontSize: 16 },
 
-  logoutButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    paddingVertical: 15,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  logoutText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
-
   darkCard: { backgroundColor: "#1E1E1E", elevation: 2 },
   lightCard: { backgroundColor: "#FFF", elevation: 2 },
 
@@ -317,9 +392,6 @@ const styles = StyleSheet.create({
   lightText: { color: "#333" },
   darkSubText: { color: "#BBB" },
   lightSubText: { color: "#777" },
-
-  darkButton: { backgroundColor: "#FF5555" },
-  lightButton: { backgroundColor: "#FF3B30" },
 });
 
 export default ProfileScreen;
