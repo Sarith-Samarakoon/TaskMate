@@ -23,7 +23,7 @@ const Onboarding1 = ({ navigation }) => {
       <View style={styles.content}>
         {/* Main onboarding image */}
         <Image
-          source={require("../../assets/TaskLogo.png")} // Update path as needed
+          source={require("../../assets/TaskMateL.png")} // Update path as needed
           style={styles.image}
           resizeMode="contain"
         />
@@ -46,7 +46,7 @@ const Onboarding1 = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#F5F9FF",
   },
   content: {
     flex: 1,
@@ -58,23 +58,23 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#1E3A8A",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: "#fff",
+    color: "#334155",
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 4, // Added small margin between subtitle lines
   },
   image: {
-    width: width * 0.9, // Slightly wider for better display
-    height: height * 0.4,
-    marginVertical: 30,
+    width: width * 0.8, // Slightly wider for better display
+    height: height * 0.3,
+    marginBottom: 120,
   },
   button: {
-    backgroundColor: "#fff",
+    backgroundColor: "#3B82F6",
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 10,
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   buttonText: {
-    color: "#007AFF",
+    color: "#ffffff",
     fontSize: 18,
     fontWeight: "600",
   },

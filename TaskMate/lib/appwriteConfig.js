@@ -151,7 +151,9 @@ export const handleCreateTask = async (
   priority,
   Category,
   deadline,
-  image
+  image,
+  completed,
+  schedule
 ) => {
   if (!title.trim()) {
     Alert.alert("Validation Error", "Title is required.");
@@ -175,6 +177,8 @@ export const handleCreateTask = async (
       priority,
       Deadline: deadline.toISOString(), // Ensure the deadline is formatted correctly
       Category,
+      completed,
+      schedule,
     };
 
     const response = await databases.createDocument(

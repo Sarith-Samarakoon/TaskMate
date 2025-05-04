@@ -9,21 +9,27 @@ import {
   TouchableOpacity,
   Modal,
   Button,
+  Alert,
 } from "react-native";
-import { getCurrentUser, databases } from "../../lib/appwriteConfig"; // Ensure you have this imported
+import { getCurrentUser, databases } from "../../lib/appwriteConfig";
 import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import Voice from "@react-native-voice/voice";
 
 const Screen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
-  const [activeTab, setActiveTab] = useState("My Tasks");
-  const [tasks, setTasks] = useState([]); // State to store tasks
+  const [activeTab, setActiveTab] = useState("View All");
+  const [tasks, setTasks] = useState([]);
   const { theme } = useTheme();
-  const [isModalVisible, setModalVisible] = useState(false); // State to manage modal visibility
-  const [taskToEdit, setTaskToEdit] = useState(null); // Store task to edit
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState("All");
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [voiceResult, setVoiceResult] = useState("");
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -32,7 +38,7 @@ const Screen = ({ navigation }) => {
         navigation.replace("Auth");
       } else {
         setUser(currentUser);
-        fetchTasks(); // Fetch tasks when the user is fetched
+        fetchTasks();
       }
       setLoading(false);
     };
@@ -42,12 +48,66 @@ const Screen = ({ navigation }) => {
   const fetchTasks = async () => {
     try {
       const response = await databases.listDocuments(
-        "67de6cb1003c63a59683", // Your database ID
-        "67e15b720007d994f573" // Your collection ID
+        "67de6cb1003c63a59683",
+        "67e15b720007d994f573"
       );
-      setTasks(response.documents); // Set the tasks data to the state
+      setTasks(response.documents);
     } catch (error) {
       console.error("Error fetching tasks:", error);
+    }
+  };
+
+  const startVoiceRecognition = async () => {
+    try {
+      await Voice.start("en-US");
+      setIsVoiceActive(true);
+    } catch (e) {
+      console.error("Error starting voice recognition:", e);
+      Alert.alert("Error", "Could not start voice recognition.");
+    }
+  };
+
+  const stopVoiceRecognition = async () => {
+    try {
+      await Voice.stop();
+      setIsVoiceActive(false);
+    } catch (e) {
+      console.error("Error stopping voice recognition:", e);
+    }
+  };
+
+  const handleVoiceCommand = async (command) => {
+    if (!command) return;
+
+    if (command.includes("mark all tasks as completed")) {
+      try {
+        const updatePromises = tasks.map((task) =>
+          databases.updateDocument(
+            "67de6cb1003c63a59683",
+            "67e15b720007d994f573",
+            task.$id,
+            { completed: true }
+          )
+        );
+        await Promise.all(updatePromises);
+        fetchTasks();
+        Alert.alert("Success", "All tasks marked as completed.");
+      } catch (error) {
+        console.error("Error marking all tasks as completed:", error);
+        Alert.alert("Error", "Failed to mark all tasks as completed.");
+      }
+    } else if (command.includes("mark task")) {
+      const taskTitle = command
+        .replace("mark task", "")
+        .replace("as completed", "")
+        .trim();
+      const task = tasks.find((t) => t.title.toLowerCase().includes(taskTitle));
+      if (task) {
+        await markTaskAsCompleted(task.$id);
+        Alert.alert("Success", `Task "${task.title}" marked as completed.`);
+      } else {
+        Alert.alert("Error", `Task "${taskTitle}" not found.`);
+      }
     }
   };
 
@@ -67,15 +127,20 @@ const Screen = ({ navigation }) => {
   const filteredTasks = tasks.filter(
     (task) =>
       task.title.toLowerCase().includes(searchText.toLowerCase()) &&
-      (activeTab === "View All" || task.status === activeTab)
+      (activeTab === "View All" ||
+        (activeTab === "Completed" && task.completed === true) ||
+        (activeTab === "In-progress" && task.completed === false)) &&
+      (selectedSchedule === "All" ||
+        (task.schedule &&
+          task.schedule.toLowerCase() === selectedSchedule.toLowerCase()))
   );
 
   const deleteTask = async (taskId) => {
     try {
       await databases.deleteDocument(
-        "67de6cb1003c63a59683", // Your database ID
-        "67e15b720007d994f573", // Your collection ID
-        taskId // Task ID to delete
+        "67de6cb1003c63a59683",
+        "67e15b720007d994f573",
+        taskId
       );
       setTasks((prevTasks) => prevTasks.filter((task) => task.$id !== taskId));
     } catch (error) {
@@ -83,37 +148,63 @@ const Screen = ({ navigation }) => {
     }
   };
 
+  const markTaskAsCompleted = async (taskId) => {
+    try {
+      const task = tasks.find((t) => t.$id === taskId);
+      const newCompletedStatus = !task.completed; // Toggle the completed status
+      await databases.updateDocument(
+        "67de6cb1003c63a59683",
+        "67e15b720007d994f573",
+        taskId,
+        { completed: newCompletedStatus }
+      );
+      fetchTasks();
+    } catch (error) {
+      console.error("Error updating task completion status:", error);
+    }
+  };
+
   const openEditModal = (task) => {
-    setTaskToEdit(task); // Set the task to be edited
-    setModalVisible(true); // Show modal
+    setTaskToEdit(task);
+    setModalVisible(true);
   };
 
   const closeEditModal = () => {
-    setModalVisible(false); // Close modal
-    setTaskToEdit(null); // Reset task to edit
+    setModalVisible(false);
+    setTaskToEdit(null);
   };
 
   const updateTask = async () => {
     if (!taskToEdit) return;
     try {
-      // Update task in the database
       await databases.updateDocument(
-        "67de6cb1003c63a59683", // Your database ID
-        "67e15b720007d994f573", // Your collection ID
-        taskToEdit.$id, // Task ID to update
+        "67de6cb1003c63a59683",
+        "67e15b720007d994f573",
+        taskToEdit.$id,
         {
           title: taskToEdit.title,
           description: taskToEdit.description,
           priority: taskToEdit.priority,
           status: taskToEdit.status,
           Deadline: taskToEdit.Deadline,
+          completed: taskToEdit.completed, // Ensure completed status is included
+          schedule: taskToEdit.schedule,
         }
       );
-      fetchTasks(); // Refresh tasks
-      closeEditModal(); // Close the modal
+      fetchTasks();
+      closeEditModal();
     } catch (error) {
       console.error("Error updating task:", error);
     }
+  };
+
+  const toggleFilterModal = () => {
+    setFilterModalVisible(!isFilterModalVisible);
+  };
+
+  const selectScheduleFilter = (schedule) => {
+    setSelectedSchedule(schedule);
+    setFilterModalVisible(false);
   };
 
   if (loading) {
@@ -141,7 +232,6 @@ const Screen = ({ navigation }) => {
     >
       <TopBar title="Tasks" />
 
-      {/* Summary Cards */}
       <View style={styles.summaryRow}>
         <View
           style={[
@@ -160,7 +250,7 @@ const Screen = ({ navigation }) => {
         >
           <Text style={styles.summaryTitle}>Completed</Text>
           <Text style={styles.summaryValue}>
-            {tasks.filter((task) => task.status === "Completed").length}
+            {tasks.filter((task) => task.completed === true).length}
           </Text>
         </View>
         <View
@@ -169,12 +259,13 @@ const Screen = ({ navigation }) => {
             { backgroundColor: theme === "dark" ? "#FFE0E0" : "#FFE0E0" },
           ]}
         >
-          <Text style={styles.summaryTitle}>Overdue</Text>
-          <Text style={styles.summaryValue}>3</Text>
+          <Text style={styles.summaryTitle}>In-progress</Text>
+          <Text style={styles.summaryValue}>
+            {tasks.filter((task) => task.completed === false).length}
+          </Text>
         </View>
       </View>
 
-      {/* Search Bar */}
       <View
         style={[
           styles.searchBar,
@@ -198,55 +289,102 @@ const Screen = ({ navigation }) => {
         />
       </View>
 
-      {/* Filter Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity onPress={() => setActiveTab("View All")}>
-          <Text
-            style={[
-              styles.viewAllText,
-              { color: theme === "dark" ? "#007AFF" : "#007AFF" },
-            ]}
-          >
-            View All
+      <View style={styles.voiceControlContainer}>
+        <TouchableOpacity
+          style={[
+            styles.voiceButton,
+            { backgroundColor: isVoiceActive ? "#FF4D4F" : "#1E88E5" },
+          ]}
+          onPress={isVoiceActive ? stopVoiceRecognition : startVoiceRecognition}
+        >
+          <Ionicons
+            name={isVoiceActive ? "mic-off" : "mic"}
+            size={24}
+            color="#fff"
+          />
+          <Text style={styles.voiceButtonText}>
+            {isVoiceActive ? "Stop Voice" : "Start Voice"}
           </Text>
         </TouchableOpacity>
-        {["My Tasks", "In-progress", "Completed"].map((tab) => {
-          const isActive = activeTab === tab;
-          const isDark = theme === "dark";
-
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tabBase,
-                isActive
-                  ? { backgroundColor: "#1E88E5" }
-                  : isDark
-                  ? { backgroundColor: "#2C2C2C" }
-                  : { backgroundColor: "#F0F0F0" },
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color: isActive
-                      ? "#FFFFFF"
-                      : isDark
-                      ? "#CCCCCC"
-                      : "#666666", // softer than #333
-                  },
-                ]}
-              >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {voiceResult ? (
+          <Text
+            style={[
+              styles.voiceResult,
+              { color: theme === "dark" ? "#ccc" : "#555" },
+            ]}
+          >
+            Recognized: {voiceResult}
+          </Text>
+        ) : null}
       </View>
 
-      {/* Task List */}
+      <View style={styles.tabsContainer}>
+        <View style={styles.tabs}>
+          <TouchableOpacity onPress={() => setActiveTab("View All")}>
+            <Text
+              style={[
+                styles.viewAllText,
+                { color: theme === "dark" ? "#007AFF" : "#007AFF" },
+              ]}
+            >
+              View All
+            </Text>
+          </TouchableOpacity>
+          {["In-progress", "Completed"].map((tab) => {
+            const isActive = activeTab === tab;
+            const isDark = theme === "dark";
+
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[
+                  styles.tabBase,
+                  isActive
+                    ? { backgroundColor: "#1E88E5" }
+                    : isDark
+                    ? { backgroundColor: "#2C2C2C" }
+                    : { backgroundColor: "#F0F0F0" },
+                ]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    {
+                      color: isActive
+                        ? "#FFFFFF"
+                        : isDark
+                        ? "#CCCCCC"
+                        : "#666666",
+                    },
+                  ]}
+                >
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={toggleFilterModal}
+        >
+          <Ionicons
+            name="filter"
+            size={20}
+            color={theme === "dark" ? "#fff" : "#333"}
+          />
+          <Text
+            style={[
+              styles.filterButtonText,
+              { color: theme === "dark" ? "#fff" : "#333" },
+            ]}
+          >
+            {selectedSchedule}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.taskList}>
         {filteredTasks.length === 0 ? (
           <Text style={{ color: "#888", textAlign: "center", marginTop: 30 }}>
@@ -311,21 +449,41 @@ const Screen = ({ navigation }) => {
                   <View style={styles.taskActions}>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => openEditModal(task)} // Open modal to edit task
+                      onPress={() => markTaskAsCompleted(task.$id)}
+                    >
+                      <MaterialIcons
+                        name={
+                          task.completed
+                            ? "check-circle"
+                            : "check-circle-outline"
+                        }
+                        size={24}
+                        color={
+                          task.completed
+                            ? "#52C41A"
+                            : theme === "dark"
+                            ? "#fff"
+                            : "#333"
+                        }
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => openEditModal(task)}
                     >
                       <MaterialIcons
                         name="edit"
-                        size={20}
+                        size={24}
                         color={theme === "dark" ? "#fff" : "#333"}
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => deleteTask(task.$id)} // Call delete function when button is pressed
+                      onPress={() => deleteTask(task.$id)}
                     >
                       <MaterialIcons
                         name="delete"
-                        size={20}
+                        size={24}
                         color={theme === "dark" ? "#fff" : "#333"}
                       />
                     </TouchableOpacity>
@@ -337,12 +495,10 @@ const Screen = ({ navigation }) => {
         )}
       </ScrollView>
 
-      {/* Modal for updating task */}
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Update Task</Text>
-
             <TextInput
               style={[
                 styles.input,
@@ -399,12 +555,67 @@ const Screen = ({ navigation }) => {
                 setTaskToEdit({ ...taskToEdit, Deadline: text })
               }
             />
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme === "dark" ? "#333" : "#fff",
+                  color: theme === "dark" ? "#fff" : "#333",
+                },
+              ]}
+              placeholder="Schedule"
+              value={taskToEdit?.schedule}
+              onChangeText={(text) =>
+                setTaskToEdit({ ...taskToEdit, schedule: text })
+              }
+            />
             <View style={styles.modalButtons}>
               <Button title="Cancel" onPress={closeEditModal} />
               <Button title="Save" onPress={updateTask} />
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="fade"
+        transparent={true}
+      >
+        <TouchableOpacity
+          style={styles.filterModalOverlay}
+          onPress={toggleFilterModal}
+        >
+          <View
+            style={[
+              styles.filterModalContent,
+              {
+                backgroundColor: theme === "dark" ? "#2E2E2E" : "#fff",
+              },
+            ]}
+          >
+            {["All", "Daily", "Weekly", "Monthly"].map((schedule) => (
+              <TouchableOpacity
+                key={schedule}
+                style={styles.filterOption}
+                onPress={() => selectScheduleFilter(schedule)}
+              >
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    {
+                      color: theme === "dark" ? "#fff" : "#333",
+                      fontWeight:
+                        selectedSchedule === schedule ? "bold" : "normal",
+                    },
+                  ]}
+                >
+                  {schedule}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -454,30 +665,43 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
+  voiceControlContainer: {
+    marginHorizontal: 10,
+    marginBottom: 10,
+  },
+  voiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 8,
+    justifyContent: "center",
+  },
+  voiceButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 10,
+  },
+  voiceResult: {
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: "center",
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 15,
+    paddingHorizontal: 10,
+  },
   tabs: {
     flexDirection: "row",
-    marginVertical: 15,
-    paddingHorizontal: 5,
+    flex: 1,
   },
   viewAllText: {
     fontWeight: "bold",
     padding: 10,
     color: "#007AFF",
-  },
-  activeTab: {
-    backgroundColor: "#1E88E5",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginHorizontal: 5,
-  },
-
-  inactiveTab: {
-    backgroundColor: "#2C2C2C",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginHorizontal: 5,
   },
   tabBase: {
     paddingVertical: 10,
@@ -485,12 +709,45 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginHorizontal: 2,
   },
-
   tabText: {
     fontWeight: "bold",
     fontSize: 14,
   },
-
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "transparent",
+  },
+  filterButtonText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  filterModalOverlay: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingTop: 150,
+    paddingRight: 10,
+  },
+  filterModalContent: {
+    borderRadius: 8,
+    padding: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    width: 120,
+  },
+  filterOption: {
+    paddingVertical: 10,
+  },
+  filterOptionText: {
+    fontSize: 14,
+  },
   taskList: {
     paddingHorizontal: 10,
   },

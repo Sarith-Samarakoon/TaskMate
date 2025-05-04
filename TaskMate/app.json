@@ -13,16 +13,39 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "TaskMate needs microphone access to enable voice commands for marking tasks as completed.",
+        "NSSpeechRecognitionUsageDescription": "TaskMate uses speech recognition to process voice commands for task management."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow TaskMate to access the microphone for voice commands.",
+          "speechRecognitionPermission": "Allow TaskMate to securely recognize user speech for task management."
+        }
+      ],
+      [
+        "react-native-permissions",
+        {
+          "iosPermissions": ["Microphone", "SpeechRecognition"]
+        }
+      ]
+    ]
   }
 }
