@@ -31,9 +31,9 @@ const CreateTaskScreen = () => {
   const [deadline, setDeadline] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [image, setImage] = useState(null);
-  // Add these states
   const [completed, setCompleted] = useState(false);
   const [schedule, setSchedule] = useState("Daily");
+  const [time, setTime] = useState(new Date()); // State to store the selected time
   const navigation = useNavigation();
 
   // Image Picker function
@@ -57,12 +57,14 @@ const CreateTaskScreen = () => {
   };
 
   // Function to create a task
-
   const handleTaskCreation = async () => {
     if (!title.trim()) {
       Alert.alert("Validation Error", "Title is required.");
       return;
     }
+
+    // If schedule is Daily, we don't require a deadline.
+    const finalDeadline = schedule === "Daily" ? time : deadline;
 
     try {
       await handleCreateTask(
@@ -70,7 +72,7 @@ const CreateTaskScreen = () => {
         description,
         priority,
         category,
-        deadline,
+        finalDeadline,
         image,
         completed,
         schedule
@@ -181,7 +183,11 @@ const CreateTaskScreen = () => {
         <Picker
           selectedValue={schedule}
           style={styles.picker}
-          onValueChange={(itemValue) => setSchedule(itemValue)}
+          onValueChange={(itemValue) => {
+            setSchedule(itemValue);
+            // Reset time when schedule is changed to something other than Daily
+            if (itemValue !== "Daily") setTime(new Date());
+          }}
         >
           <Picker.Item label="Daily" value="Daily" />
           <Picker.Item label="Weekly" value="Weekly" />
@@ -189,34 +195,71 @@ const CreateTaskScreen = () => {
         </Picker>
       </View>
 
-      <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>
-        Deadline
-      </Text>
-      <TouchableOpacity
-        style={[
-          styles.input,
-          {
-            backgroundColor: isDark ? "#1e1e1e" : "#f2f2f2",
-            justifyContent: "center",
-          },
-        ]}
-        onPress={() => setShowDatePicker(true)}
-      >
-        <Text style={{ color: isDark ? "#fff" : "#000" }}>
-          {deadline.toDateString()}
-        </Text>
-      </TouchableOpacity>
+      {/* If the schedule is Daily, show the time picker instead of the deadline */}
+      {schedule === "Daily" ? (
+        <View style={styles.pickerContainer}>
+          <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>
+            Time
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.input,
+              {
+                backgroundColor: isDark ? "#1e1e1e" : "#f2f2f2",
+                justifyContent: "center",
+              },
+            ]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={{ color: isDark ? "#fff" : "#000" }}>
+              {time.toLocaleTimeString()}
+            </Text>
+          </TouchableOpacity>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={deadline}
-          mode="date"
-          display={Platform.OS === "ios" ? "inline" : "default"}
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) setDeadline(selectedDate);
-          }}
-        />
+          {showDatePicker && (
+            <DateTimePicker
+              value={time}
+              mode="time"
+              display={Platform.OS === "ios" ? "inline" : "default"}
+              onChange={(event, selectedTime) => {
+                setShowDatePicker(false);
+                if (selectedTime) setTime(selectedTime);
+              }}
+            />
+          )}
+        </View>
+      ) : (
+        <View style={styles.pickerContainer}>
+          <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>
+            Deadline
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.input,
+              {
+                backgroundColor: isDark ? "#1e1e1e" : "#f2f2f2",
+                justifyContent: "center",
+              },
+            ]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={{ color: isDark ? "#fff" : "#000" }}>
+              {deadline.toDateString()}
+            </Text>
+          </TouchableOpacity>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={deadline}
+              mode="date"
+              display={Platform.OS === "ios" ? "inline" : "default"}
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(false);
+                if (selectedDate) setDeadline(selectedDate);
+              }}
+            />
+          )}
+        </View>
       )}
 
       <TouchableOpacity

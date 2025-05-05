@@ -41,6 +41,38 @@ const Screen = ({ navigation }) => {
     fetchUser();
   }, []);
 
+  const isDateBeforeToday = (dateString) => {
+    const taskDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    taskDate.setHours(0, 0, 0, 0);
+    return taskDate < today;
+  };
+
+  const updateSkipCount = async (task) => {
+    if (
+      task.schedule?.toLowerCase() === "daily" &&
+      !task.completed &&
+      task.Deadline &&
+      isDateBeforeToday(task.Deadline)
+    ) {
+      try {
+        const newSkipCount = (task.skipCount || 0) + 1;
+        await databases.updateDocument(
+          "67de6cb1003c63a59683",
+          "67e15b720007d994f573",
+          task.$id,
+          { skipCount: newSkipCount }
+        );
+        return { ...task, skipCount: newSkipCount };
+      } catch (error) {
+        console.error("Error updating skip count:", error);
+        return task;
+      }
+    }
+    return task;
+  };
+
   const fetchTasks = async () => {
     try {
       const response = await databases.listDocuments(
@@ -107,7 +139,7 @@ const Screen = ({ navigation }) => {
   };
 
   const openEditModal = (task) => {
-    setTaskToEdit(task);
+    setTaskToEdit({ ...task, skipCount: task.skipCount || 0 });
     setModalVisible(true);
   };
 
@@ -129,8 +161,9 @@ const Screen = ({ navigation }) => {
           priority: taskToEdit.priority,
           status: taskToEdit.status,
           Deadline: taskToEdit.Deadline,
-          completed: taskToEdit.completed, // Ensure completed status is included
+          completed: taskToEdit.completed,
           schedule: taskToEdit.schedule,
+          skipCount: taskToEdit.skipCount || 0, // Preserve skipCount
         }
       );
       fetchTasks();
@@ -358,6 +391,16 @@ const Screen = ({ navigation }) => {
                     >
                       {task.Deadline}
                     </Text>
+                    {task.schedule?.toLowerCase() === "daily" && (
+                      <Text
+                        style={[
+                          styles.skipCountText,
+                          { color: theme === "dark" ? "#FF4D4F" : "#FF4D4F" },
+                        ]}
+                      >
+                        Skips: {task.skipCount || 0}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.taskActions}>
                     <TouchableOpacity
