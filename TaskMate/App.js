@@ -3,7 +3,10 @@ import { ActivityIndicator, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import { createDrawerNavigator } from "@react-navigation/drawer";
+
 import AuthScreen from "./components/Login&SignUp/AuthForm";
+import DrawerWrapper from "./components/MenuBars/DrawerWrapper"; // ✅ Imported
 import TabNavigator from "./components/MenuBars/TabNavigation";
 import { getCurrentUser } from "./lib/appwriteConfig";
 import { ThemeProvider, useTheme } from "./components/ThemeContext";
@@ -66,7 +69,7 @@ const AppNavigator = () => {
         />
         <Stack.Screen
           name="Home"
-          component={TabNavigator}
+          component={DrawerWrapper}
           options={{ headerShown: false }}
         />
         <Stack.Screen
