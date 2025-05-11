@@ -19,7 +19,7 @@ const PrivacyPolicy = ({ navigation }) => {
         theme === "dark" ? styles.darkContainer : styles.lightContainer,
       ]}
     >
-      <TopBar title="Privacy&Security" />
+      <TopBar title="Privacy&Policy" />
       <Text
         style={[
           styles.header,

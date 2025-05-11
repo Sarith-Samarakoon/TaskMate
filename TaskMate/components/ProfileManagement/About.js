@@ -4,10 +4,13 @@ import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
+import { TouchableOpacity } from "react-native";
 
 const About = () => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const navigation = useNavigation();
 
   const features = [
     {
@@ -166,6 +169,19 @@ const About = () => {
             </Text>
           </View>
         </View>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()} // Changed to navigate to the "Home" tab
+          style={styles.homeButtonWrapper}
+        >
+          <LinearGradient
+            colors={["#42a5f5", "#1976d2"]}
+            style={styles.homeButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.homeButtonText}>Back to Home</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     </>
   );
@@ -250,6 +266,26 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     marginLeft: 10,
+  },
+  homeButtonWrapper: {
+    marginTop: 20,
+    marginBottom: 30,
+    alignItems: "center",
+  },
+  homeButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  homeButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

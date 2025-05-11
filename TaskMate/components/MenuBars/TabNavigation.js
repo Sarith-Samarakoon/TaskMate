@@ -16,6 +16,7 @@ import PrivacyPolicy from "../ProfileManagement/Privacy&Security";
 import CompletedTask from "../HistoryManagement/CompletedTask";
 import Goals from "../HistoryManagement/Goals";
 import SetGoals from "../HistoryManagement/SetGoals";
+import About from "../ProfileManagement/About";
 
 // Import hidden screens
 import ReminderScreen from "../ReminderManagement/ReminderScreen";
@@ -29,6 +30,7 @@ const HomeStack = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="Screen" component={Screen} />
+      <Stack.Screen name="About" component={About} />
     </Stack.Navigator>
   );
 };
