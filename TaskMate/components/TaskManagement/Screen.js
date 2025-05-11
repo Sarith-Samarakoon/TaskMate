@@ -8,12 +8,16 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  Alert,
   Button,
 } from "react-native";
 import { getCurrentUser, databases } from "../../lib/appwriteConfig";
 import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
+
+const GEMINI_API_KEY = "AIzaSyB4ES75inscnYNssR89EZafbSfm_6qOTxs";
 
 const Screen = ({ navigation }) => {
   const [user, setUser] = useState(null);
@@ -44,7 +48,7 @@ const Screen = ({ navigation }) => {
   const isDateBeforeToday = (dateString) => {
     const taskDate = new Date(dateString);
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    today.setHours(0, 0, 0, 0);
     taskDate.setHours(0, 0, 0, 0);
     return taskDate < today;
   };
@@ -85,6 +89,33 @@ const Screen = ({ navigation }) => {
     }
   };
 
+  const handlePredict = async (task) => {
+    try {
+      const response = await fetch("http://192.168.1.5:5000/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priority: task.priority,
+          category: task.category || "Work",
+          title: task.title,
+          skipCount: parseInt(task.skipCount || 0),
+          deadline: task.Deadline,
+        }),
+      });
+
+      const json = await response.json();
+      if (json.predicted_time) {
+        return json.predicted_time;
+      } else {
+        return "Prediction failed.";
+      }
+    } catch (error) {
+      return "Could not connect to the server.";
+    }
+  };
+
   const getPriorityStyle = (priority) => {
     switch (priority) {
       case "High":
@@ -95,6 +126,44 @@ const Screen = ({ navigation }) => {
         return { backgroundColor: "#DFFFE0", color: "#52C41A" };
       default:
         return { backgroundColor: "#eee", color: "#333" };
+    }
+  };
+
+  const formatDeadline = (deadline, schedule) => {
+    if (!deadline) return "No Deadline";
+    const date = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+
+    if (isNaN(date.getTime())) return "Invalid Date";
+
+    if (schedule?.toLowerCase() === "daily") {
+      return new Date(deadline).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+
+    const options = {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+    const formattedDate = date.toLocaleDateString("en-US", options);
+
+    if (date.toDateString() === today.toDateString()) {
+      return `Today, ${new Date(deadline).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })}`;
+    } else if (date < today) {
+      return `Overdue: ${formattedDate}`;
+    } else {
+      return formattedDate;
     }
   };
 
@@ -125,7 +194,7 @@ const Screen = ({ navigation }) => {
   const markTaskAsCompleted = async (taskId) => {
     try {
       const task = tasks.find((t) => t.$id === taskId);
-      const newCompletedStatus = !task.completed; // Toggle the completed status
+      const newCompletedStatus = !task.completed;
       await databases.updateDocument(
         "67de6cb1003c63a59683",
         "67e15b720007d994f573",
@@ -163,7 +232,7 @@ const Screen = ({ navigation }) => {
           Deadline: taskToEdit.Deadline,
           completed: taskToEdit.completed,
           schedule: taskToEdit.schedule,
-          skipCount: taskToEdit.skipCount || 0, // Preserve skipCount
+          skipCount: taskToEdit.skipCount || 0,
         }
       );
       fetchTasks();
@@ -181,6 +250,54 @@ const Screen = ({ navigation }) => {
     setSelectedSchedule(schedule);
     setFilterModalVisible(false);
   };
+
+  const checkAndShowPredictionAlert = async (task) => {
+    if (task.skipCount > 3) {
+      try {
+        // Fetch predicted time from handlePredict
+        const predictedTime = await handlePredict(task);
+
+        // Fetch time ranges from Gemini API
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Suggest 3 specific time ranges within around "${task.Deadline}" to work on this task: "${task.title}". The task details are: ${task.description}. The deadline is: ${task.Deadline}. Consider the deadline and provide time ranges that are practical for completing the task effectively. Format the response as a concise list of time ranges (e.g., "9:00 AM - 10:00 AM").`,
+                  },
+                ],
+              },
+            ],
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        let timeRanges = "No time ranges suggested.";
+        if (response?.data?.candidates?.length > 0) {
+          timeRanges =
+            response.data.candidates[0]?.content?.parts[0]?.text ||
+            "No time ranges found.";
+        }
+
+        window.alert(
+          `Task "${task.title}" has ${task.skipCount} skips.\nPredicted time: ${predictedTime}\nSuggested time ranges:\n${timeRanges}`
+        );
+      } catch (error) {
+        console.error("Error in checkAndShowPredictionAlert:", error);
+        window.alert(
+          `Task "${task.title}" has ${task.skipCount} skips. Failed to generate predictions or time ranges.`
+        );
+      }
+    }
+  };
+
+  useEffect(() => {
+    tasks.forEach((task) => {
+      checkAndShowPredictionAlert(task);
+    });
+  }, [tasks]);
 
   if (loading) {
     return (
@@ -339,6 +456,10 @@ const Screen = ({ navigation }) => {
         ) : (
           filteredTasks.map((task, index) => {
             const priorityStyle = getPriorityStyle(task.priority);
+            const formattedDeadline = formatDeadline(
+              task.Deadline,
+              task.schedule
+            );
             return (
               <View
                 key={index}
@@ -380,17 +501,23 @@ const Screen = ({ navigation }) => {
                   <View style={styles.taskDate}>
                     <Ionicons
                       name="calendar-outline"
-                      size={16}
-                      color={theme === "dark" ? "#fff" : "#666"}
+                      size={18}
+                      color={theme === "dark" ? "#FFD700" : "#0047AB"}
+                      style={styles.calendarIcon}
                     />
-                    <Text
-                      style={[
-                        styles.dateText,
-                        { color: theme === "dark" ? "#ccc" : "#666" },
-                      ]}
-                    >
-                      {task.Deadline}
-                    </Text>
+                    <View style={styles.deadlineBadge}>
+                      <Text
+                        style={[
+                          styles.dateText,
+                          {
+                            color: theme === "dark" ? "#FFD700" : "#0047AB",
+                            fontWeight: "600",
+                          },
+                        ]}
+                      >
+                        {formattedDeadline}
+                      </Text>
+                    </View>
                     {task.schedule?.toLowerCase() === "daily" && (
                       <Text
                         style={[

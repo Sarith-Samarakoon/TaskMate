@@ -39,14 +39,6 @@ const NotificationScreen = () => {
             color={theme === "dark" ? "#FFF" : "#000"}
           />
         </TouchableOpacity>
-        <Text
-          style={[
-            styles.headerTitle,
-            theme === "dark" ? styles.darkText : styles.lightText,
-          ]}
-        >
-          Notifications
-        </Text>
       </View>
 
       {/* Tabs */}
