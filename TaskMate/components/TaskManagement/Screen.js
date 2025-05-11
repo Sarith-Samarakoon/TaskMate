@@ -16,6 +16,7 @@ import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
+import UpdateTaskModal from "./UpdateTaskModal";
 
 const GEMINI_API_KEY = "AIzaSyB4ES75inscnYNssR89EZafbSfm_6qOTxs";
 
@@ -25,8 +26,12 @@ const Screen = ({ navigation }) => {
   const [searchText, setSearchText] = useState("");
   const [activeTab, setActiveTab] = useState("View All");
   const [tasks, setTasks] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [currentTheme, setCurrentTheme] = useState("light"); // or get from context
   const { theme } = useTheme();
-  const [isModalVisible, setModalVisible] = useState(false);
+  const isDark = theme === "dark";
+
   const [taskToEdit, setTaskToEdit] = useState(null);
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState("All");
@@ -78,6 +83,18 @@ const Screen = ({ navigation }) => {
   };
 
   const fetchTasks = async () => {
+    try {
+      const response = await databases.listDocuments(
+        "67de6cb1003c63a59683",
+        "67e15b720007d994f573"
+      );
+      setTasks(response.documents);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  };
+
+  const fetchUpdatedTasks = async () => {
     try {
       const response = await databases.listDocuments(
         "67de6cb1003c63a59683",
@@ -207,39 +224,9 @@ const Screen = ({ navigation }) => {
     }
   };
 
-  const openEditModal = (task) => {
-    setTaskToEdit({ ...task, skipCount: task.skipCount || 0 });
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
     setModalVisible(true);
-  };
-
-  const closeEditModal = () => {
-    setModalVisible(false);
-    setTaskToEdit(null);
-  };
-
-  const updateTask = async () => {
-    if (!taskToEdit) return;
-    try {
-      await databases.updateDocument(
-        "67de6cb1003c63a59683",
-        "67e15b720007d994f573",
-        taskToEdit.$id,
-        {
-          title: taskToEdit.title,
-          description: taskToEdit.description,
-          priority: taskToEdit.priority,
-          status: taskToEdit.status,
-          Deadline: taskToEdit.Deadline,
-          completed: taskToEdit.completed,
-          schedule: taskToEdit.schedule,
-          skipCount: taskToEdit.skipCount || 0,
-        }
-      );
-      fetchTasks();
-      closeEditModal();
-    } catch (error) {
-      console.error("Error updating task:", error);
-    }
   };
 
   const toggleFilterModal = () => {
@@ -552,7 +539,7 @@ const Screen = ({ navigation }) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => openEditModal(task)}
+                      onPress={() => handleEditTask(task)}
                     >
                       <MaterialIcons
                         name="edit"
@@ -562,7 +549,7 @@ const Screen = ({ navigation }) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => deleteTask(task.$id)}
+                      onPress={() => deleteTask(task.id)}
                     >
                       <MaterialIcons
                         name="delete"
@@ -578,87 +565,13 @@ const Screen = ({ navigation }) => {
         )}
       </ScrollView>
 
-      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Update Task</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme === "dark" ? "#333" : "#fff",
-                  color: theme === "dark" ? "#fff" : "#333",
-                },
-              ]}
-              placeholder="Title"
-              value={taskToEdit?.title}
-              onChangeText={(text) =>
-                setTaskToEdit({ ...taskToEdit, title: text })
-              }
-            />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme === "dark" ? "#333" : "#fff",
-                  color: theme === "dark" ? "#fff" : "#333",
-                },
-              ]}
-              placeholder="Description"
-              value={taskToEdit?.description}
-              onChangeText={(text) =>
-                setTaskToEdit({ ...taskToEdit, description: text })
-              }
-            />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme === "dark" ? "#333" : "#fff",
-                  color: theme === "dark" ? "#fff" : "#333",
-                },
-              ]}
-              placeholder="Priority"
-              value={taskToEdit?.priority}
-              onChangeText={(text) =>
-                setTaskToEdit({ ...taskToEdit, priority: text })
-              }
-            />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme === "dark" ? "#333" : "#fff",
-                  color: theme === "dark" ? "#fff" : "#333",
-                },
-              ]}
-              placeholder="Deadline"
-              value={taskToEdit?.Deadline}
-              onChangeText={(text) =>
-                setTaskToEdit({ ...taskToEdit, Deadline: text })
-              }
-            />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme === "dark" ? "#333" : "#fff",
-                  color: theme === "dark" ? "#fff" : "#333",
-                },
-              ]}
-              placeholder="Schedule"
-              value={taskToEdit?.schedule}
-              onChangeText={(text) =>
-                setTaskToEdit({ ...taskToEdit, schedule: text })
-              }
-            />
-            <View style={styles.modalButtons}>
-              <Button title="Cancel" onPress={closeEditModal} />
-              <Button title="Save" onPress={updateTask} />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <UpdateTaskModal
+        isVisible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onUpdate={fetchUpdatedTasks}
+        route={{ params: { task: selectedTask, theme: currentTheme } }}
+        navigation={navigation}
+      />
 
       <Modal
         visible={isFilterModalVisible}
@@ -859,36 +772,6 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     marginLeft: 10,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    width: "80%",
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-  },
-  input: {
-    height: 40,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    marginBottom: 15,
-    borderRadius: 8,
-    paddingLeft: 10,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
   },
 });
 

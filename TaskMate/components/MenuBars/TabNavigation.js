@@ -17,6 +17,7 @@ import CompletedTask from "../HistoryManagement/CompletedTask";
 import Goals from "../HistoryManagement/Goals";
 import SetGoals from "../HistoryManagement/SetGoals";
 import About from "../ProfileManagement/About";
+import UpdateTaskPage from "../TaskManagement/UpdateTaskModal";
 
 // Import hidden screens
 import ReminderScreen from "../ReminderManagement/ReminderScreen";
@@ -31,6 +32,7 @@ const HomeStack = () => {
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="Screen" component={Screen} />
       <Stack.Screen name="About" component={About} />
+      <Stack.Screen name="UpdateTaskPage" component={UpdateTaskPage} />
     </Stack.Navigator>
   );
 };
