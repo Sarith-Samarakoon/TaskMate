@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import { getCurrentUser } from "../../lib/appwriteConfig";
+import { getCurrentUser, account } from "../../lib/appwriteConfig";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../ThemeContext";
@@ -40,6 +40,17 @@ const ProfileScreen = () => {
       }));
     } catch (error) {
       console.error("Error updating profile picture:", error);
+    }
+  };
+
+  // New handleLogout function
+  const handleLogout = async () => {
+    try {
+      await account.deleteSession("current");
+      console.log("Logged out successfully");
+      navigation.replace("Auth"); // or navigation.navigate('Login')
+    } catch (error) {
+      console.error("Error logging out:", error);
     }
   };
 
@@ -110,28 +121,168 @@ const ProfileScreen = () => {
         );
       case "Achievement":
         return (
-          <View style={styles.tabContent}>
-            <Text
-              style={[
-                styles.tabContentText,
-                theme === "dark" ? styles.darkText : styles.lightText,
-              ]}
-            >
-              Achievements Coming Soon!
-            </Text>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Task Master
+              </Text>
+              <View style={styles.progressRow}>
+                <Ionicons
+                  name="trophy-outline"
+                  size={24}
+                  color="#FFD700"
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  Completed 10 tasks in a week
+                </Text>
+              </View>
+            </View>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Goal Champion
+              </Text>
+              <View style={styles.progressRow}>
+                <Ionicons
+                  name="medal-outline"
+                  size={24}
+                  color="#FFD700"
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  Achieved 5 goals this month
+                </Text>
+              </View>
+            </View>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Early Bird
+              </Text>
+              <View style={styles.progressRow}>
+                <Ionicons
+                  name="sunny-outline"
+                  size={24}
+                  color="#FFD700"
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  Completed a task before 8 AM
+                </Text>
+              </View>
+            </View>
           </View>
         );
       case "Rewards":
         return (
-          <View style={styles.tabContent}>
-            <Text
-              style={[
-                styles.tabContentText,
-                theme === "dark" ? styles.darkText : styles.lightText,
-              ]}
-            >
-              Rewards Coming Soon!
-            </Text>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Productivity Pro
+              </Text>
+              <View style={styles.progressRow}>
+                <Ionicons
+                  name="star-outline"
+                  size={24}
+                  color="#FFD700"
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  50 points for completing 10 tasks
+                </Text>
+              </View>
+            </View>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Goal Getter
+              </Text>
+              <View style={styles.progressRow}>
+                <Ionicons
+                  name="gift-outline"
+                  size={24}
+                  color="#FFD700"
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  30 points for achieving 5 goals
+                </Text>
+              </View>
+            </View>
+            <View style={styles.progressItem}>
+              <Text
+                style={[
+                  styles.progressLabel,
+                  theme === "dark" ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Streak Keeper
+              </Text>
+              <View style={styles.progressRow}>
+                <Ionicons
+                  name="flame-outline"
+                  size={24}
+                  color="#FFD700"
+                  style={{ marginRight: 10 }}
+                />
+                <Text
+                  style={[
+                    styles.progressValue,
+                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                  ]}
+                >
+                  20 points for a 7-day streak
+                </Text>
+              </View>
+            </View>
           </View>
         );
       default:
@@ -166,9 +317,11 @@ const ProfileScreen = () => {
         >
           Profile
         </Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleLogout}>
+          {" "}
+          {/* Attach logout here */}
           <Ionicons
-            name="settings-outline"
+            name="log-out-outline" // Use logout icon
             size={28}
             color={theme === "dark" ? "#FFF" : "#333"}
           />

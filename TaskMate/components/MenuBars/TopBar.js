@@ -29,6 +29,10 @@ const TopBar = ({ title }) => {
     fetchUser();
   }, []);
 
+  const handleMenuPress = () => {
+    navigation.openDrawer();
+  };
+
   // Define dynamic padding and font sizes based on screen width
   const isSmallScreen = width < 375; // Consider screens smaller than 375px as small screens
   const titleFontSize = isSmallScreen ? 18 : 22; // Smaller font size for small screens
@@ -42,6 +46,16 @@ const TopBar = ({ title }) => {
         { paddingHorizontal: isSmallScreen ? 10 : 20 }, // Adjust padding for small screens
       ]}
     >
+      <TouchableOpacity
+        onPress={navigation.openDrawer}
+        style={{ marginRight: 10 }}
+      >
+        <Ionicons
+          name="menu-outline"
+          size={iconSize}
+          color={theme === "dark" ? "#FFD700" : "#000080"}
+        />
+      </TouchableOpacity>
       <Text
         style={[
           styles.title,
@@ -93,18 +107,6 @@ const TopBar = ({ title }) => {
             color={theme === "dark" ? "#FFD700" : "#000080"}
           />
         </TouchableOpacity>
-
-        {/* Bell Icon Button for Notifications */}
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate("Notification")}
-        >
-          <Ionicons
-            name="notifications-outline"
-            size={iconSize}
-            color={theme === "dark" ? "#FFD700" : "#000080"} // Dark mode icon color is gold (#FFD700)
-          />
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    marginRight: 10,
+    marginRight: 5,
     fontWeight: "500",
   },
   profileImage: {
@@ -158,7 +160,7 @@ const styles = StyleSheet.create({
     borderColor: "#0047AB",
   },
   themeToggle: {
-    padding: 8,
+    padding: 0,
     borderRadius: 8,
   },
   addButton: {
