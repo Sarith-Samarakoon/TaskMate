@@ -3,10 +3,14 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import {
   registerUser,
@@ -15,7 +19,9 @@ import {
   getCurrentUser,
   resetPassword,
 } from "../../lib/appwriteConfig";
-import * as WebBrowser from "expo-web-browser"; // Import WebBrowser for OAuth handling
+import * as WebBrowser from "expo-web-browser";
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons, FontAwesome, Ionicons } from "@expo/vector-icons";
 
 const AuthScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -23,13 +29,15 @@ const AuthScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [user, setUser] = useState(null);
   const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
       const currentUser = await getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
-        navigation.replace("Home"); // Redirect if already logged in
+        navigation.replace("Home");
       }
     };
     fetchUser();
@@ -37,12 +45,13 @@ const AuthScreen = ({ navigation }) => {
 
   const handleSubmit = async () => {
     try {
+      setIsLoading(true);
       if (isLogin) {
         const session = await loginUser(email, password);
         if (session) {
           const currentUser = await getCurrentUser();
           setUser(currentUser);
-          navigation.replace("Home"); // Navigate to Home on success
+          navigation.replace("Home");
         } else {
           Alert.alert("Login Failed", "Invalid email or password.");
         }
@@ -57,40 +66,33 @@ const AuthScreen = ({ navigation }) => {
       }
     } catch (error) {
       Alert.alert("Error", error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     try {
-      // Use correct redirect URL for your app
-      const redirectUrl = "exp://127.0.0.1:19000"; // Replace with actual URL if in production
+      const redirectUrl = "exp://127.0.0.1:19000";
       const authUrl = await loginWithGoogle();
 
-      // Open OAuth session
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
         redirectUrl
       );
 
       if (result.type === "success") {
-        // Extract the URL and parse token or user data if needed
         const { url } = result;
-
         if (url) {
-          const token = url.split("access_token=")[1].split("&")[0]; // Example token extraction, adjust based on your URL structure
+          const token = url.split("access_token=")[1].split("&")[0];
           if (token) {
-            // Store or use the token
-            Alert.alert("Google Login", "Successfully signed in with Google.");
-            navigation.replace("Home"); // Navigate to Home on success
-          } else {
-            Alert.alert("Error", "Unable to extract token from the URL.");
+            Alert.alert("Success", "Signed in with Google successfully!");
+            navigation.replace("Home");
           }
         }
-      } else {
-        Alert.alert("Google Login Failed", "Login was unsuccessful.");
       }
     } catch (error) {
-      Alert.alert("Google Login Failed", error.message);
+      Alert.alert("Error", error.message);
     }
   };
 
@@ -99,95 +101,267 @@ const AuthScreen = ({ navigation }) => {
       Alert.alert("Input Required", "Please enter your email.");
       return;
     }
-    await resetPassword(email);
-    Alert.alert("Reset Email Sent", "Check your inbox.");
+    try {
+      await resetPassword(email);
+      Alert.alert("Reset Email Sent", "Check your inbox for instructions.");
+    } catch (error) {
+      Alert.alert("Error", error.message);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? "Login" : "Register"}</Text>
+    <LinearGradient
+      colors={["#4c669f", "#3b5998", "#192f6a"]}
+      style={styles.container}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <Image
+              source={require("../../assets/TaskMateL.png")}
+              style={styles.logo}
+            />
+            <Text style={styles.title}>
+              {isLogin ? "Welcome Back" : "Create Account"}
+            </Text>
+            <Text style={styles.subtitle}>
+              {isLogin ? "Login to continue" : "Join us today!"}
+            </Text>
+          </View>
 
-      {!isLogin && (
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          value={name}
-          onChangeText={setName}
-        />
-      )}
+          <View style={styles.formContainer}>
+            {!isLogin && (
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="person" size={20} color="#4c669f" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor="#999"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                />
+              </View>
+            )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="email" size={20} color="#4c669f" />
+              <TextInput
+                style={styles.input}
+                placeholder="Email Address"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="lock" size={20} color="#4c669f" />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!passwordVisible}
+              />
+              <TouchableOpacity
+                onPress={() => setPasswordVisible(!passwordVisible)}
+              >
+                <Ionicons
+                  name={passwordVisible ? "eye-off" : "eye"}
+                  size={20}
+                  color="#4c669f"
+                />
+              </TouchableOpacity>
+            </View>
 
-      <Button title={isLogin ? "Login" : "Register"} onPress={handleSubmit} />
+            {isLogin && (
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                onPress={handlePasswordReset}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            )}
 
-      <TouchableOpacity onPress={handleGoogleLogin} style={styles.googleButton}>
-        <Text style={styles.googleText}>Sign in with Google</Text>
-      </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSubmit}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {isLogin ? "Login" : "Register"}
+                </Text>
+              )}
+            </TouchableOpacity>
 
-      <TouchableOpacity onPress={handlePasswordReset}>
-        <Text style={styles.linkText}>Forgot Password?</Text>
-      </TouchableOpacity>
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-      <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-        <Text style={styles.linkText}>
-          {isLogin ? "Create an account" : "Already have an account? Login"}
-        </Text>
-      </TouchableOpacity>
-    </View>
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleLogin}
+            >
+              <FontAwesome name="google" size={20} color="#DB4437" />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                {isLogin
+                  ? "Don't have an account?"
+                  : "Already have an account?"}
+              </Text>
+              <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
+                <Text style={styles.footerLink}>
+                  {isLogin ? "Sign up" : "Login"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
+  },
+  header: {
     alignItems: "center",
-    padding: 20,
+    paddingBottom: 30,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 10,
+    color: "white",
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.7)",
+  },
+  formContainer: {
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    borderRadius: 20,
+    padding: 25,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
   },
   input: {
-    width: 300,
+    flex: 1,
     height: 50,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
+    paddingLeft: 10,
+    color: "#333",
   },
-  googleButton: {
-    backgroundColor: "#DB4437",
-    padding: 10,
-    borderRadius: 5,
-    marginVertical: 10,
-    width: 250,
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: 15,
+  },
+  forgotPasswordText: {
+    color: "#4c669f",
+    fontSize: 14,
+  },
+  button: {
+    backgroundColor: "#4c669f",
+    borderRadius: 10,
+    height: 50,
+    justifyContent: "center",
     alignItems: "center",
+    marginTop: 10,
   },
-  googleText: {
+  buttonText: {
     color: "white",
+    fontSize: 16,
     fontWeight: "bold",
   },
-  linkText: {
-    color: "blue",
-    marginTop: 10,
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ddd",
+  },
+  dividerText: {
+    width: 50,
     textAlign: "center",
+    color: "#999",
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    height: 50,
+    marginBottom: 15,
+  },
+  googleButtonText: {
+    marginLeft: 10,
+    color: "#333",
+    fontWeight: "bold",
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  footerText: {
+    color: "#666",
+  },
+  footerLink: {
+    color: "#4c669f",
+    fontWeight: "bold",
+    marginLeft: 5,
   },
 });
 
