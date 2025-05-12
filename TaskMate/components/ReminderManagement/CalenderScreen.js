@@ -10,6 +10,7 @@ import {
   TextInput,
   ScrollView,
   Dimensions,
+  Alert,
   Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -189,7 +190,11 @@ const CalendarScreen = () => {
       }
 
       const formattedDateTime = reminderDateTime.format("DD/MM/YYYY h:mm A");
-      const formattedDate = reminderDateTime.format("DD/MM/YYYY");
+      const isoFormattedDateTime = reminderDateTime.toISOString(); // ISO 8601 for SetTime
+      const isoFormattedDate = reminderDateTime.format("YYYY-MM-DD"); // ISO 8601 date part for SetDate
+      const isoFormattedSelectedDate = moment(selectedDate, "YYYY-MM-DD")
+        .startOf("day")
+        .toISOString(); // ISO 8601 for Date
 
       await databases.createDocument(
         databaseId,
@@ -197,10 +202,10 @@ const CalendarScreen = () => {
         "unique()",
         {
           TaskTitle: selectedTask.title,
-          Date: selectedDate,
+          Date: isoFormattedSelectedDate, // Now in ISO 8601 format
           Note: note || null,
-          SetTime: formattedDateTime,
-          SetDate: formattedDate,
+          SetTime: isoFormattedDateTime, // Now in ISO 8601 format
+          SetDate: isoFormattedDate, // Already in YYYY-MM-DD
         }
       );
 

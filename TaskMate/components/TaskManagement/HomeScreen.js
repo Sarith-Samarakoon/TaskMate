@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,48 +9,34 @@ import {
   Modal,
   ScrollView,
   Image,
+  Animated,
 } from "react-native";
-import { getCurrentUser } from "../../lib/appwriteConfig";
+import { getCurrentUser, databases } from "../../lib/appwriteConfig";
 import TopBar from "../MenuBars/TopBar";
 import { useTheme } from "../ThemeContext";
 import axios from "axios";
 import { MaterialIcons } from "@expo/vector-icons";
 
-// Replace this with your actual image import
-const placeholderImage = require("../../assets/progress-image.png"); // Update this path
+const placeholderImage = require("../../assets/progress-image.png");
 
 const GEMINI_API_KEY = "AIzaSyB4ES75inscnYNssR89EZafbSfm_6qOTxs";
 
-const tasks = [
-  {
-    id: "1",
-    title: "Flowunet Project Meeting",
-    time: "8:15 AM - 9:00 AM",
-    description: "Complete UI design review before 3 PM today",
-  },
-  {
-    id: "2",
-    title: "Team Meeting Reminder",
-    time: "8:15 AM - 9:00 AM",
-    description: "Complete UI design review before 3 PM today",
-  },
-  {
-    id: "3",
-    title: "Project Review",
-    time: "8:15 AM - 9:00 AM",
-    description: "Complete UI design review before 3 PM today",
-  },
-];
-
 const HomeScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]); // State for filtered tasks
   const [loading, setLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [aiResponse, setAiResponse] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false); // Filter modal state
+  const [filterType, setFilterType] = useState("All"); // Filter type state
   const { theme } = useTheme();
+  const fadeAnim = useRef(new Animated.Value(0)).current; // Animation for filter modal
 
+  // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -68,6 +54,73 @@ const HomeScreen = ({ navigation }) => {
     };
     fetchUser();
   }, []);
+
+  // Fetch tasks
+  const fetchTasks = async () => {
+    try {
+      setTasksLoading(true);
+      const response = await databases.listDocuments(
+        "67de6cb1003c63a59683",
+        "67e15b720007d994f573"
+      );
+      setTasks(response.documents);
+      setFilteredTasks(response.documents); // Initialize filtered tasks
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  // Fetch tasks when component mounts
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  // Filter tasks based on schedule
+  useEffect(() => {
+    if (filterType === "All") {
+      setFilteredTasks(tasks);
+    } else {
+      setFilteredTasks(tasks.filter((task) => task.schedule === filterType));
+    }
+  }, [filterType, tasks]);
+
+  // Animate filter modal
+  useEffect(() => {
+    if (filterModalVisible) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [filterModalVisible]);
+
+  // Format deadline to display as a time range
+  const formatDeadline = (deadline) => {
+    if (!deadline) return "No time set";
+    const date = new Date(deadline);
+    const startTime = date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+    });
+    const endTime = new Date(
+      date.getTime() + 45 * 60 * 1000
+    ).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+    });
+    return `${startTime} - ${endTime}`;
+  };
 
   const handleAssistMe = async () => {
     if (!selectedTask) {
@@ -112,6 +165,12 @@ const HomeScreen = ({ navigation }) => {
   const getCurrentDate = () => {
     const options = { month: "short", day: "numeric", year: "numeric" };
     return new Date().toLocaleDateString("en-US", options).toUpperCase();
+  };
+
+  // Handle filter selection
+  const handleFilterSelect = (type) => {
+    setFilterType(type);
+    setFilterModalVisible(false);
   };
 
   return (
@@ -215,73 +274,164 @@ const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: theme === "dark" ? "#FFFFFF" : "#000000" },
-            ]}
-          >
-            TASKS
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Screen")}>
+          <View style={styles.tasksHeader}>
             <Text
               style={[
-                styles.seeAllText,
-                { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+                styles.sectionTitle,
+                { color: theme === "dark" ? "#FFFFFF" : "#000000" },
               ]}
             >
-              See All
+              TASKS
             </Text>
-          </TouchableOpacity>
-
-          <FlatList
-            data={tasks}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+            <View style={styles.tasksHeaderRight}>
               <TouchableOpacity
-                onPress={() => setSelectedTask(item)}
-                style={[
-                  styles.taskItem,
-                  {
-                    backgroundColor: theme === "dark" ? "#1E1E1E" : "#FFFFFF",
-                    borderColor:
-                      selectedTask?.id === item.id
-                        ? theme === "dark"
-                          ? "#FFD700"
-                          : "#007AFF"
-                        : "transparent",
-                    borderWidth: 2,
-                  },
-                ]}
+                style={styles.filterButton}
+                onPress={() => setFilterModalVisible(true)}
               >
+                <MaterialIcons
+                  name="filter-list"
+                  size={20}
+                  color={theme === "dark" ? "#FFD700" : "#007AFF"}
+                />
                 <Text
                   style={[
-                    styles.taskTitle,
+                    styles.filterButtonText,
                     { color: theme === "dark" ? "#FFD700" : "#007AFF" },
                   ]}
                 >
-                  {item.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.taskTime,
-                    { color: theme === "dark" ? "#AAAAAA" : "#666666" },
-                  ]}
-                >
-                  {item.time}
-                </Text>
-                <Text
-                  style={[
-                    styles.taskDescription,
-                    { color: theme === "dark" ? "#CCCCCC" : "#444444" },
-                  ]}
-                >
-                  {item.description}
+                  Filter: {filterType}
                 </Text>
               </TouchableOpacity>
-            )}
-          />
+              <TouchableOpacity onPress={() => navigation.navigate("Screen")}>
+                <Text
+                  style={[
+                    styles.seeAllText,
+                    { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+                  ]}
+                >
+                  See All
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {tasksLoading ? (
+            <ActivityIndicator size="large" color="#FFD700" />
+          ) : filteredTasks.length === 0 ? (
+            <Text
+              style={[
+                styles.noTasksText,
+                { color: theme === "dark" ? "#AAAAAA" : "#666666" },
+              ]}
+            >
+              No tasks available
+            </Text>
+          ) : (
+            <FlatList
+              data={filteredTasks}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.$id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => setSelectedTask(item)}
+                  style={[
+                    styles.taskItem,
+                    {
+                      backgroundColor: theme === "dark" ? "#1E1E1E" : "#FFFFFF",
+                      borderColor:
+                        selectedTask?.$id === item.$id
+                          ? theme === "dark"
+                            ? "#FFD700"
+                            : "#007AFF"
+                          : "transparent",
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.taskTitle,
+                      { color: theme === "dark" ? "#FFD700" : "#007AFF" },
+                    ]}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.taskTime,
+                      { color: theme === "dark" ? "#AAAAAA" : "#666666" },
+                    ]}
+                  >
+                    {formatDeadline(item.Deadline)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.taskDescription,
+                      { color: theme === "dark" ? "#CCCCCC" : "#444444" },
+                    ]}
+                  >
+                    {item.description}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+
+          {/* Filter Modal */}
+          <Modal
+            visible={filterModalVisible}
+            transparent
+            animationType="none"
+            onRequestClose={() => setFilterModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.filterModalOverlay}
+              activeOpacity={1}
+              onPress={() => setFilterModalVisible(false)}
+            >
+              <Animated.View
+                style={[
+                  styles.filterModal,
+                  {
+                    backgroundColor: theme === "dark" ? "#1E1E1E" : "#FFFFFF",
+                    opacity: fadeAnim,
+                  },
+                ]}
+              >
+                {["All", "Daily", "Weekly", "Monthly"].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.filterOption,
+                      filterType === type && {
+                        backgroundColor:
+                          theme === "dark" ? "#333333" : "#E6F0FF",
+                      },
+                    ]}
+                    onPress={() => handleFilterSelect(type)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterOptionText,
+                        {
+                          color:
+                            filterType === type
+                              ? theme === "dark"
+                                ? "#FFD700"
+                                : "#007AFF"
+                              : theme === "dark"
+                              ? "#CCCCCC"
+                              : "#333333",
+                        },
+                      ]}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
+            </TouchableOpacity>
+          </Modal>
         </ScrollView>
       )}
 
@@ -376,7 +526,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
   },
-
   progressTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -422,10 +571,60 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 10,
   },
+  tasksHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  tasksHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 15,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "transparent",
+    marginRight: 10,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: "medium",
+    marginLeft: 5,
+  },
+  filterModalOverlay: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.2)",
+    paddingTop: 120, // Adjust based on your layout
+  },
+  filterModal: {
+    width: 150,
+    borderRadius: 10,
+    padding: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    marginRight: 30,
+    marginTop: 100,
+  },
+  filterOption: {
+    padding: 10,
+    borderRadius: 5,
+    marginVertical: 2,
+  },
+  filterOptionText: {
+    fontSize: 16,
+    fontWeight: "medium",
   },
   taskItem: {
     padding: 15,
@@ -450,11 +649,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   seeAllText: {
-    textAlign: "right",
     fontSize: 16,
     fontWeight: "medium",
-    marginBottom: 20,
-    marginTop: -34,
   },
   modalContainer: {
     flex: 1,
@@ -494,6 +690,16 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  noTasksText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginVertical: 20,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
