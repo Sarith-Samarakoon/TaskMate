@@ -14,8 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import TopBar from "../MenuBars/TopBar";
 import { databases } from "../../lib/appwriteConfig";
-
-import { useTheme } from "../ThemeContext"; // Import the useTheme hook
+import { useTheme } from "../ThemeContext";
 
 const DATABASE_ID = "67de6cb1003c63a59683";
 const COLLECTION_ID = "67e00a9c0006981492be";
@@ -62,55 +61,10 @@ const ReminderItem = ({
 
 const ReminderScreen = () => {
   const [reminders, setReminders] = useState({
-    today: "FEB 15, 2025",
-    tomorrow: [
-      {
-        id: "1",
-        title: "Client Call",
-        note: "Set your reminder",
-        color: "#3B82F6",
-      },
-      {
-        id: "2",
-        title: "Grocery Shopping",
-        note: "Set your reminder",
-        color: "#8B5CF6",
-      },
-      {
-        id: "3",
-        title: "Watch AVATAR Movie",
-        note: "Set your reminder",
-        color: "#EC4899",
-      },
-    ],
-    upcoming: [
-      {
-        id: "4",
-        title: "Flowunet Project Meeting",
-        date: "FEB 19, 2025",
-        color: "#16A34A",
-      },
-      {
-        id: "5",
-        title: "Doctor's Appointment",
-        date: "FEB 27, 2025",
-        color: "#F59E0B",
-      },
-    ],
-    missed: [
-      {
-        id: "6",
-        title: "Call to CEO",
-        time: "YESTERDAY 8:15 AM - 9:00 AM",
-        color: "#EF4444",
-      },
-      {
-        id: "7",
-        title: "Grocery Shopping",
-        time: "FEB 12, 2025 11:00 AM - 2:00 PM",
-        color: "#8B5CF6",
-      },
-    ],
+    today: [],
+    tomorrow: [],
+    upcoming: [],
+    missed: [],
   });
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -120,13 +74,11 @@ const ReminderScreen = () => {
   const [isPM, setIsPM] = useState(false);
   const navigation = useNavigation();
   const [currentDate, setCurrentDate] = useState("");
-
-  // Get the current theme
   const { theme } = useTheme();
 
   useEffect(() => {
     const today = new Date();
-    setCurrentDate(today.toDateString()); // Example: "Wed, Mar 26, 2025"
+    setCurrentDate(today.toDateString());
   }, []);
 
   useEffect(() => {
@@ -139,16 +91,50 @@ const ReminderScreen = () => {
         DATABASE_ID,
         COLLECTION_ID
       );
-      const fetchedReminders = response.documents.map((doc) => ({
-        id: doc.$id,
-        title: doc.TaskTitle,
-        note: doc.Note,
-        date: doc.Date,
-        time: new Date(doc.SetTime),
-        color: "#3B82F6",
-      }));
+      const now = new Date();
+      const todayStart = new Date(now.setHours(0, 0, 0, 0));
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(todayStart.getDate() + 1);
+      const tomorrowEnd = new Date(tomorrowStart);
+      tomorrowEnd.setDate(tomorrowStart.getDate() + 1);
 
-      setReminders((prev) => ({ ...prev, tomorrow: fetchedReminders }));
+      const categorizedReminders = {
+        today: [],
+        tomorrow: [],
+        upcoming: [],
+        missed: [],
+      };
+
+      response.documents.forEach((doc) => {
+        const reminderTime = new Date(doc.SetTime);
+        const reminder = {
+          id: doc.$id,
+          title: doc.TaskTitle,
+          note: doc.Note,
+          date: reminderTime.toLocaleDateString(),
+          time: reminderTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          color: "#3B82F6",
+          rawTime: reminderTime,
+        };
+
+        if (reminderTime < now) {
+          categorizedReminders.missed.push(reminder);
+        } else if (reminderTime >= todayStart && reminderTime < tomorrowStart) {
+          categorizedReminders.today.push(reminder);
+        } else if (
+          reminderTime >= tomorrowStart &&
+          reminderTime < tomorrowEnd
+        ) {
+          categorizedReminders.tomorrow.push(reminder);
+        } else if (reminderTime >= tomorrowEnd) {
+          categorizedReminders.upcoming.push(reminder);
+        }
+      });
+
+      setReminders(categorizedReminders);
     } catch (error) {
       console.error("Error fetching reminders:", error);
     } finally {
@@ -160,7 +146,7 @@ const ReminderScreen = () => {
     try {
       await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
       setReminders((prev) => ({
-        ...prev,
+        today: prev.today.filter((item) => item.id !== id),
         tomorrow: prev.tomorrow.filter((item) => item.id !== id),
         upcoming: prev.upcoming.filter((item) => item.id !== id),
         missed: prev.missed.filter((item) => item.id !== id),
@@ -173,6 +159,7 @@ const ReminderScreen = () => {
 
   const handleUpdate = (id) => {
     const reminder = [
+      ...reminders.today,
       ...reminders.tomorrow,
       ...reminders.upcoming,
       ...reminders.missed,
@@ -180,8 +167,8 @@ const ReminderScreen = () => {
 
     setSelectedReminder(reminder);
     setUpdatedNote(reminder.note);
-    setUpdatedTime(new Date(reminder.time));
-    setIsPM(reminder.time.getHours() >= 12);
+    setUpdatedTime(new Date(reminder.rawTime));
+    setIsPM(reminder.rawTime.getHours() >= 12);
     setModalVisible(true);
   };
 
@@ -202,28 +189,7 @@ const ReminderScreen = () => {
         }
       );
 
-      setReminders((prev) => {
-        const updatedReminders = {
-          ...prev,
-          tomorrow: prev.tomorrow.map((item) =>
-            item.id === selectedReminder.id
-              ? { ...item, note: updatedNote, time: updatedTime }
-              : item
-          ),
-          upcoming: prev.upcoming.map((item) =>
-            item.id === selectedReminder.id
-              ? { ...item, note: updatedNote, time: updatedTime }
-              : item
-          ),
-          missed: prev.missed.map((item) =>
-            item.id === selectedReminder.id
-              ? { ...item, note: updatedNote, time: updatedTime }
-              : item
-          ),
-        };
-
-        return updatedReminders;
-      });
+      await fetchReminders(); // Refresh reminders to re-categorize
 
       setModalVisible(false);
       console.log("Reminder updated successfully!");
@@ -235,9 +201,12 @@ const ReminderScreen = () => {
   const handleTimeChange = (value, part) => {
     const newTime = new Date(updatedTime);
     if (part === "hours") {
-      newTime.setHours(value);
+      let hours = parseInt(value);
+      if (isPM && hours !== 12) hours += 12;
+      if (!isPM && hours === 12) hours = 0;
+      newTime.setHours(hours);
     } else if (part === "minutes") {
-      newTime.setMinutes(value);
+      newTime.setMinutes(parseInt(value));
     }
     setUpdatedTime(newTime);
   };
@@ -248,7 +217,6 @@ const ReminderScreen = () => {
       <View
         style={[styles.container, theme === "dark" && styles.darkContainer]}
       >
-        {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -269,9 +237,8 @@ const ReminderScreen = () => {
         <Text
           style={[styles.sectionTitle, theme === "dark" && styles.darkText]}
         >
-          TOMORROW
+          TODAY
         </Text>
-
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -279,12 +246,13 @@ const ReminderScreen = () => {
           />
         ) : (
           <FlatList
-            data={reminders.tomorrow}
+            data={reminders.today}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <ReminderItem
                 title={item.title}
                 note={item.note}
+                time={item.time}
                 color={item.color}
                 id={item.id}
                 handleDelete={handleDelete}
@@ -298,6 +266,28 @@ const ReminderScreen = () => {
         <Text
           style={[styles.sectionTitle, theme === "dark" && styles.darkText]}
         >
+          TOMORROW
+        </Text>
+        <FlatList
+          data={reminders.tomorrow}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ReminderItem
+              title={item.title}
+              note={item.note}
+              time={item.time}
+              color={item.color}
+              id={item.id}
+              handleDelete={handleDelete}
+              handleUpdate={handleUpdate}
+              showUpdateButton
+            />
+          )}
+        />
+
+        <Text
+          style={[styles.sectionTitle, theme === "dark" && styles.darkText]}
+        >
           UPCOMING
         </Text>
         <FlatList
@@ -307,6 +297,7 @@ const ReminderScreen = () => {
             <ReminderItem
               title={item.title}
               date={item.date}
+              time={item.time}
               color={item.color}
               id={item.id}
               handleDelete={handleDelete}
@@ -360,18 +351,17 @@ const ReminderScreen = () => {
                 onChangeText={setUpdatedNote}
                 placeholder="Note"
               />
-              {/* Time Picker */}
               <View style={styles.timePicker}>
                 <TextInput
                   style={[
                     styles.timeInput,
                     theme === "dark" && styles.darkInput,
                   ]}
-                  value={updatedTime.getHours().toString().padStart(2, "0")}
+                  value={(updatedTime.getHours() % 12 || 12)
+                    .toString()
+                    .padStart(2, "0")}
                   keyboardType="numeric"
-                  onChangeText={(val) =>
-                    handleTimeChange(parseInt(val), "hours")
-                  }
+                  onChangeText={(val) => handleTimeChange(val, "hours")}
                 />
                 <Text style={styles.colon}>:</Text>
                 <TextInput
@@ -381,9 +371,7 @@ const ReminderScreen = () => {
                   ]}
                   value={updatedTime.getMinutes().toString().padStart(2, "0")}
                   keyboardType="numeric"
-                  onChangeText={(val) =>
-                    handleTimeChange(parseInt(val), "minutes")
-                  }
+                  onChangeText={(val) => handleTimeChange(val, "minutes")}
                 />
                 <TouchableOpacity
                   onPress={() => setIsPM(!isPM)}
