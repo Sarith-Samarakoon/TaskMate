@@ -629,24 +629,7 @@ const NotificationScreen = () => {
         {renderSection("MISSED", getTabItems("missed"))}
       </ScrollView>
 
-      <View
-        style={[
-          styles.quickSettingsContainer,
-          theme === "dark" ? styles.darkCard : styles.lightCard,
-        ]}
-      >
-        <Text
-          style={[
-            styles.sectionHeader,
-            theme === "dark" ? styles.darkText : styles.lightText,
-          ]}
-        >
-          QUICK SETTINGS
-        </Text>
-        <QuickSetting title="Do Not Disturb" theme={theme} />
-        <QuickSetting title="Sound" isEnabled={true} theme={theme} />
-        <QuickSetting title="Vibration" isEnabled={true} theme={theme} />
-      </View>
+
     </View>
   );
 };
@@ -723,22 +706,6 @@ const NotificationCard = ({
   </View>
 );
 
-const QuickSetting = ({ title, isEnabled = false, theme }) => {
-  const [enabled, setEnabled] = React.useState(isEnabled);
-  return (
-    <View style={styles.quickSetting}>
-      <Text
-        style={[
-          styles.quickSettingText,
-          theme === "dark" ? styles.darkText : styles.lightText,
-        ]}
-      >
-        {title}
-      </Text>
-      <Switch value={enabled} onValueChange={() => setEnabled(!enabled)} />
-    </View>
-  );
-};
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

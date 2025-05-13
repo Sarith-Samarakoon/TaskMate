@@ -5,13 +5,13 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Switch,
   Modal,
   TextInput,
   ScrollView,
   Dimensions,
   Alert,
   Animated,
+  Button,
   Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,8 +35,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState("2025-03-04");
-  const [googleSync, setGoogleSync] = useState(false);
-  const [outlookSync, setOutlookSync] = useState(false);
   const { theme } = useTheme();
   const navigation = useNavigation();
   const [tasks, setTasks] = useState([]);
@@ -88,59 +86,47 @@ const CalendarScreen = () => {
 
   // Function to open Google Calendar
   const openGoogleCalendar = async () => {
-    const appUrl = "com.google.calendar://";
-    const webUrl = "https://calendar.google.com";
+    const deepLink = "googlecalendar://";
+    const webUrl = "https://calendar.google.com/calendar/r";
 
     try {
-      const canOpen = await Linking.canOpenURL(appUrl);
-      if (canOpen) {
-        await Linking.openURL(appUrl);
+      // Check if Google Calendar app is installed
+      const supported = await Linking.canOpenURL(deepLink);
+      if (supported) {
+        await Linking.openURL(deepLink);
       } else {
+        // Fallback to web version
         await Linking.openURL(webUrl);
       }
     } catch (error) {
       console.error("Error opening Google Calendar:", error);
-      Alert.alert("Error", "Failed to open Google Calendar. Please try again.");
+      Alert.alert(
+        "Error",
+        "Failed to open Google Calendar. Please ensure the app or browser is available."
+      );
     }
   };
 
   // Function to open Outlook Calendar
   const openOutlookCalendar = async () => {
-    const appUrl = "ms-outlook://calendar";
+    const deepLink = "ms-outlook://calendar";
     const webUrl = "https://outlook.live.com/calendar/";
 
     try {
-      await Linking.openURL(appUrl);
-    } catch (error) {
-      console.error(
-        "Failed to open Outlook calendar, falling back to web:",
-        error
-      );
-      try {
+      // Try deep link first
+      const supported = await Linking.canOpenURL(deepLink);
+      if (supported) {
+        await Linking.openURL(deepLink);
+      } else {
+        // Fallback to web version
         await Linking.openURL(webUrl);
-      } catch (webError) {
-        console.error("Error opening Outlook web:", webError);
-        Alert.alert(
-          "Error",
-          "Failed to open Outlook Calendar. Please try again."
-        );
       }
-    }
-  };
-
-  // Handle Google Calendar switch toggle
-  const handleGoogleSyncToggle = (value) => {
-    setGoogleSync(value);
-    if (value) {
-      openGoogleCalendar();
-    }
-  };
-
-  // Handle Outlook Calendar switch toggle
-  const handleOutlookSyncToggle = (value) => {
-    setOutlookSync(value);
-    if (value) {
-      openOutlookCalendar();
+    } catch (error) {
+      console.error("Error opening Outlook Calendar:", error);
+      Alert.alert(
+        "Error",
+        "Failed to open Outlook Calendar. Please ensure the app or browser is available."
+      );
     }
   };
 
@@ -409,7 +395,7 @@ const CalendarScreen = () => {
         </View>
 
         <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
-          TODAY'S TASKS
+          TASKS
         </Text>
         {loading ? (
           <Text style={[styles.loadingText, { color: themeColors.subText }]}>
@@ -434,13 +420,29 @@ const CalendarScreen = () => {
           <Text style={[styles.calendarText, { color: themeColors.text }]}>
             Google Calendar
           </Text>
-          <Switch value={googleSync} onValueChange={handleGoogleSyncToggle} />
+          <TouchableOpacity
+            style={[
+              styles.calendarButton,
+              { backgroundColor: themeColors.accent },
+            ]}
+            onPress={openGoogleCalendar}
+          >
+            <Text style={styles.buttonText}>Open</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.calendarSync}>
           <Text style={[styles.calendarText, { color: themeColors.text }]}>
-            Outlook Calendar
+            Outlook
           </Text>
-          <Switch value={outlookSync} onValueChange={handleOutlookSyncToggle} />
+          <TouchableOpacity
+            style={[
+              styles.calendarButton,
+              { backgroundColor: themeColors.accent },
+            ]}
+            onPress={openOutlookCalendar}
+          >
+            <Text style={styles.buttonText}>Open</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Reminder Modal */}
@@ -570,7 +572,7 @@ const CalendarScreen = () => {
                       {
                         backgroundColor: themeColors.inputBg,
                         color: themeColors.text,
-                        border植物Color: error
+                        borderColor: error
                           ? themeColors.error
                           : themeColors.border,
                       },
@@ -709,7 +711,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    marginLeft: 15,
+    marginLeft: 30,
     marginTop: 15,
     marginBottom: 10,
   },
@@ -718,6 +720,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 15,
     marginBottom: 10,
+    marginTop:30
   },
   filterButton: {
     flex: 1,
@@ -766,6 +769,17 @@ const styles = StyleSheet.create({
   calendarText: {
     fontSize: 14,
     fontWeight: "bold",
+  },
+  calendarButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   loadingText: {
     textAlign: "center",

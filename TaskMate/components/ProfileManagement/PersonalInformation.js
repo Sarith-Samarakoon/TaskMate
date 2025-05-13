@@ -140,7 +140,7 @@ const PersonalInformation = () => {
             source={{
               uri:
                 user?.prefs?.profilePicture ||
-                "https://i.pinimg.com/736x/38/41/97/384197530d32338dd6caafaf1c6a26c4.jpg",
+                "https://i.pinimg.com/736x/0b/97/6f/0b976f0a7aa1aa43870e1812eee5a55d.jpg",
             }}
             style={styles.profileImage}
           />
