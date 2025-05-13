@@ -48,7 +48,7 @@ const TopBar = ({ title }) => {
     >
       <TouchableOpacity
         onPress={navigation.openDrawer}
-        style={{ marginRight: 10 }}
+        style={{ marginRight: 10, marginTop: 30 }}
       >
         <Ionicons
           name="menu-outline"
@@ -86,7 +86,7 @@ const TopBar = ({ title }) => {
               source={{
                 uri:
                   user.profileImage ||
-                  "https://i.pinimg.com/736x/38/41/97/384197530d32338dd6caafaf1c6a26c4.jpg",
+                  "https://i.pinimg.com/736x/0b/97/6f/0b976f0a7aa1aa43870e1812eee5a55d.jpg",
               }}
               style={[
                 styles.profileImage,
@@ -117,13 +117,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 15,
+    paddingVertical: 20,
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 5,
-    marginTop: 5,
+    marginTop: 3,
   },
   lightContainer: {
     backgroundColor: "#ffff",
@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "bold",
+    marginTop:30
   },
   lightText: {
     color: "#0047AB",
@@ -143,6 +144,7 @@ const styles = StyleSheet.create({
   rightSection: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop:30
   },
   profileContainer: {
     flexDirection: "row",
@@ -157,7 +159,7 @@ const styles = StyleSheet.create({
   profileImage: {
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: "#0047AB",
+    borderColor: "green",
   },
   themeToggle: {
     padding: 0,

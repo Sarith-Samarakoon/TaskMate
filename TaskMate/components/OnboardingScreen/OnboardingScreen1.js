@@ -18,29 +18,36 @@ const Onboarding1 = ({ navigation }) => {
     navigation.replace("Onboarding2"); // Or your next screen
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Main onboarding image */}
-        <Image
-          source={require("../../assets/TaskMateL.png")} // Update path as needed
-          style={styles.image}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>TaskMate</Text>
-        <Text style={styles.subtitle}>Your AI-powered personal assistant</Text>
-        <Text style={styles.subtitle}>for smart task management</Text>
+return (
+  <SafeAreaView style={styles.container}>
+    <View style={styles.content}>
+      {/* Main onboarding image */}
+      <Image
+        source={require("../../assets/TaskMateL.png")}
+        style={styles.image}
+        resizeMode="contain"
+      />
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleGetStarted}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.buttonText}>Get Started</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
+      {/* Spacer to push text closer to button */}
+      <View style={{ flex: 1 }} />
+
+      {/* Title & Subtitle */}
+      <Text style={styles.title}>TaskMate</Text>
+      <Text style={styles.subtitle}>Your AI-powered personal assistant</Text>
+      <Text style={styles.subtitle}>for smart task management</Text>
+
+      {/* Button */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={handleGetStarted}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.buttonText}>Get Started</Text>
+      </TouchableOpacity>
+    </View>
+  </SafeAreaView>
+);
+
 };
 
 const styles = StyleSheet.create({
@@ -53,32 +60,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
+    marginTop:30,
     paddingBottom: 40, // Added some bottom padding
   },
-  title: {
-    fontSize: 32,
+   title: {
+    fontSize: 28,
     fontWeight: "bold",
     color: "#1E3A8A",
-    marginBottom: 8,
+    marginBottom: 6,
+    marginTop: 10,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#334155",
     textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 4, // Added small margin between subtitle lines
+    lineHeight: 22,
+    marginBottom: 2,
   },
   image: {
     width: width * 0.8, // Slightly wider for better display
     height: height * 0.3,
-    marginBottom: 120,
+    marginBottom: 10,
+    marginTop: 20
   },
   button: {
     backgroundColor: "#3B82F6",
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 10,
-    marginTop: 30, // Reduced margin since image is properly spaced
+    marginTop: 40,
     width: width * 0.8,
     alignItems: "center",
     shadowColor: "#000",
