@@ -6,12 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  FlatList
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
 import { useNavigation } from "@react-navigation/native"; 
 import { Client, Databases, ID } from "appwrite";
-import Icon from "react-native-vector-icons/MaterialIcons"; // Import delete icon
+import Icon from "react-native-vector-icons/MaterialIcons";
 
 // Initialize Appwrite Client
 const client = new Client()
@@ -25,12 +24,12 @@ const SetGoalsScreen = () => {
   const [goalNote, setGoalNote] = useState("");
   const [open, setOpen] = useState(false);
   const [timeFrame, setTimeFrame] = useState(null);
+  const [goalNameError, setGoalNameError] = useState(""); // State for validation error
   const [items, setItems] = useState([
     { label: "1 Day", value: "1_day" },
     { label: "1 Week", value: "1_week" },
     { label: "1 Month", value: "1_month" },
     { label: "3 Months", value: "3_months" },
-    
   ]);
   const [goals, setGoals] = useState([]);
 
@@ -49,10 +48,27 @@ const SetGoalsScreen = () => {
     }
   };
 
+  // Validate Goal Name
+  const validateGoalName = (name) => {
+    if (!name.trim()) {
+      return "Goal name is required.";
+    }
+    if (name.length < 3) {
+      return "Goal name must be at least 3 characters long.";
+    }
+    if (!/^[a-zA-Z0-9]+$/.test(name)) {
+      return "Goal name can only contain letters or numbers.";
+    }
+    return "";
+  };
+
   // Save Goal to Database
   const saveGoalToDatabase = async () => {
-    if (!goalName || !timeFrame) {
-      Alert.alert("Error", "Please fill in all required fields.");
+    const goalNameValidationError = validateGoalName(goalName);
+    setGoalNameError(goalNameValidationError);
+
+    if (goalNameValidationError || !timeFrame) {
+      Alert.alert("Error", "Please correct the errors in the form.");
       return;
     }
 
@@ -72,6 +88,7 @@ const SetGoalsScreen = () => {
       setGoalName("");
       setGoalNote("");
       setTimeFrame(null);
+      setGoalNameError("");
       fetchGoals();
 
       navigation.navigate("Goals");
@@ -104,16 +121,26 @@ const SetGoalsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Set Your Goals</Text>
+      {/* Header with Back Button */}
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="arrow-back" size={24} color="#2A4D9B" />
+        </TouchableOpacity>
+        <Text style={styles.header}>Set Your Goals</Text>
+      </View>
 
       {/* Goal Name Input */}
       <Text style={styles.label}>Goal Name</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, goalNameError ? styles.inputError : null]}
         placeholder="Enter goal name"
         value={goalName}
-        onChangeText={setGoalName}
+        onChangeText={(text) => {
+          setGoalName(text);
+          setGoalNameError(validateGoalName(text));
+        }}
       />
+      {goalNameError ? <Text style={styles.errorText}>{goalNameError}</Text> : null}
 
       {/* Timeframe Dropdown */}
       <Text style={styles.label}>Timeframe</Text>
@@ -145,10 +172,6 @@ const SetGoalsScreen = () => {
       <TouchableOpacity style={styles.button} onPress={saveGoalToDatabase}>
         <Text style={styles.buttonText}>Save Goal</Text>
       </TouchableOpacity>
-
-      {/* Display Saved Goals */}
-      
-      
     </View>
   );
 };
@@ -161,11 +184,16 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#F5F8FC",
   },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   header: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#2A4D9B",
-    marginBottom: 20,
+    marginLeft: 10,
   },
   label: {
     fontSize: 16,
@@ -179,6 +207,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: "#ccc",
+  },
+  inputError: {
+    borderColor: "red",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginBottom: 15,
   },
   textArea: {
     height: 80,
@@ -205,34 +241,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  listHeader: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
-    color: "#2A4D9B",
-  },
-  goalItem: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  goalContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  goalTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  goalDetails: {
-    fontSize: 14,
-    color: "#555",
   },
 });
 

@@ -18,6 +18,7 @@ import Goals from "../HistoryManagement/Goals";
 import SetGoals from "../HistoryManagement/SetGoals";
 import About from "../ProfileManagement/About";
 import UpdateTaskPage from "../TaskManagement/UpdateTaskModal";
+import PersonalInformation from "../ProfileManagement/PersonalInformation";
 
 // Import hidden screens
 import ReminderScreen from "../ReminderManagement/ReminderScreen";
@@ -52,6 +53,10 @@ const ProfileStack = () => {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupport} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+      <Stack.Screen
+        name="PersonalInformation"
+        component={PersonalInformation}
+      />
     </Stack.Navigator>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Asset } from "expo-asset";
 import {
   View,
   Text,
@@ -8,12 +9,19 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import { getCurrentUser, account } from "../../lib/appwriteConfig";
+import {
+  getCurrentUser,
+  account,
+  updateProfilePicture,
+} from "../../lib/appwriteConfig";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../ThemeContext";
 import TopBar from "../MenuBars/TopBar";
-import { ProgressBar } from "react-native-paper"; // For progress bars
+import { ProgressBar } from "react-native-paper";
+
+// Debug: Log to verify imports
+console.log("Imported updateProfilePicture:", updateProfilePicture);
 
 const ProfileScreen = () => {
   const [user, setUser] = useState(null);
@@ -31,15 +39,31 @@ const ProfileScreen = () => {
     fetchUser();
   }, []);
 
+  useEffect(() => {
+    const preloadImages = async () => {
+      await Asset.loadAsync([
+        require("../../assets/level1.png"),
+        require("../../assets/level2.png"),
+        require("../../assets/level3.png"),
+      ]);
+    };
+    preloadImages();
+  }, []);
+
   const handleProfilePictureChange = async () => {
     try {
       const newProfilePicUrl = await updateProfilePicture();
-      setUser((prevUser) => ({
-        ...prevUser,
-        profilePicture: newProfilePicUrl,
-      }));
+      if (newProfilePicUrl) {
+        setUser((prevUser) => ({
+          ...prevUser,
+          prefs: {
+            ...prevUser.prefs,
+            profilePicture: newProfilePicUrl,
+          },
+        }));
+      }
     } catch (error) {
-      console.error("Error updating profile picture:", error);
+      console.error("Error updating profile picture:", error.message);
     }
   };
 
@@ -204,85 +228,38 @@ const ProfileScreen = () => {
         );
       case "Rewards":
         return (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressItem}>
-              <Text
+          <View style={styles.rewardsContainer}>
+            {rewardsData.map((reward, index) => (
+              <View
+                key={index}
                 style={[
-                  styles.progressLabel,
-                  theme === "dark" ? styles.darkText : styles.lightText,
+                  styles.rewardCard,
+                  theme === "dark" ? styles.darkCard : styles.lightCard,
                 ]}
               >
-                Productivity Pro
-              </Text>
-              <View style={styles.progressRow}>
-                <Ionicons
-                  name="star-outline"
-                  size={24}
-                  color="#FFD700"
-                  style={{ marginRight: 10 }}
-                />
-                <Text
-                  style={[
-                    styles.progressValue,
-                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
-                  ]}
-                >
-                  50 points for completing 10 tasks
-                </Text>
+                <Image source={reward.image} style={styles.rewardImage} />
+                <View style={styles.rewardTextContainer}>
+                  <Text
+                    style={[
+                      styles.rewardTitle,
+                      theme === "dark" ? styles.darkText : styles.lightText,
+                    ]}
+                  >
+                    {reward.title}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.rewardDescription,
+                      theme === "dark"
+                        ? styles.darkSubText
+                        : styles.lightSubText,
+                    ]}
+                  >
+                    {reward.description}
+                  </Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.progressItem}>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  theme === "dark" ? styles.darkText : styles.lightText,
-                ]}
-              >
-                Goal Getter
-              </Text>
-              <View style={styles.progressRow}>
-                <Ionicons
-                  name="gift-outline"
-                  size={24}
-                  color="#FFD700"
-                  style={{ marginRight: 10 }}
-                />
-                <Text
-                  style={[
-                    styles.progressValue,
-                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
-                  ]}
-                >
-                  30 points for achieving 5 goals
-                </Text>
-              </View>
-            </View>
-            <View style={styles.progressItem}>
-              <Text
-                style={[
-                  styles.progressLabel,
-                  theme === "dark" ? styles.darkText : styles.lightText,
-                ]}
-              >
-                Streak Keeper
-              </Text>
-              <View style={styles.progressRow}>
-                <Ionicons
-                  name="flame-outline"
-                  size={24}
-                  color="#FFD700"
-                  style={{ marginRight: 10 }}
-                />
-                <Text
-                  style={[
-                    styles.progressValue,
-                    theme === "dark" ? styles.darkSubText : styles.lightSubText,
-                  ]}
-                >
-                  20 points for a 7-day streak
-                </Text>
-              </View>
-            </View>
+            ))}
           </View>
         );
       default:
@@ -335,6 +312,7 @@ const ProfileScreen = () => {
             uri:
               user?.profilePicture ||
               "https://i.pinimg.com/736x/0b/97/6f/0b976f0a7aa1aa43870e1812eee5a55d.jpg",
+
           }}
           style={styles.profileImage}
         />
@@ -404,7 +382,9 @@ const ProfileScreen = () => {
             key={index}
             style={styles.menuItem}
             onPress={() => {
-              if (option.label === "Help & Support") {
+              if (option.label === "Personal Information") {
+                navigation.navigate("PersonalInformation");
+              } else if (option.label === "Help & Support") {
                 navigation.navigate("HelpSupport");
               } else if (option.label === "Privacy & Security") {
                 navigation.navigate("PrivacyPolicy");
@@ -443,6 +423,24 @@ const menuOptions = [
   { icon: "help-circle-outline", label: "Help & Support" },
 ];
 
+const rewardsData = [
+  {
+    title: "Productivity Pro",
+    description: "50 points for completing 10 tasks",
+    image: require("../../assets/level1.png"),
+  },
+  {
+    title: "Goal Getter",
+    description: "30 points for achieving 5 goals",
+    image: require("../../assets/level2.png"),
+  },
+  {
+    title: "Streak Keeper",
+    description: "20 points for a 7-day streak",
+    image: require("../../assets/level3.png"),
+  },
+];
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   darkContainer: { backgroundColor: "#121212" },
@@ -463,8 +461,8 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 3,
     borderColor: "green", // Green border as in screenshot
+
   },
   editIcon: {
     position: "absolute",
@@ -495,7 +493,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: "#FF00FF", // Purple underline as in screenshot
+    borderBottomColor: "#FF00FF",
   },
   tabText: { fontSize: 16, fontWeight: "bold" },
   activeTabText: { color: "#FF00FF", fontWeight: "bold" },
@@ -514,15 +512,39 @@ const styles = StyleSheet.create({
   progressBar: { flex: 1, height: 10, borderRadius: 5, marginRight: 10 },
   progressValue: { fontSize: 14 },
 
-  tabContent: {
-    alignItems: "center",
-    padding: 20,
-    borderRadius: 10,
-    backgroundColor: "#FFF",
+  rewardsContainer: {
     marginHorizontal: 20,
-    elevation: 2,
+    marginBottom: 20,
   },
-  tabContentText: { fontSize: 16 },
+  rewardCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  rewardImage: {
+    width: 80,
+    height: 80,
+    marginRight: 15,
+    resizeMode: "contain",
+  },
+  rewardTextContainer: {
+    flex: 1,
+  },
+  rewardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  rewardDescription: {
+    fontSize: 14,
+  },
 
   menu: {
     marginHorizontal: 20,
@@ -545,6 +567,12 @@ const styles = StyleSheet.create({
   lightText: { color: "#333" },
   darkSubText: { color: "#BBB" },
   lightSubText: { color: "#777" },
+
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
 
 export default ProfileScreen;

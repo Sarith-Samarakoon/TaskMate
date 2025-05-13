@@ -1,29 +1,22 @@
-import { Client, Account } from "appwrite";
-import { Databases } from "appwrite";
+import { Client, Account, Databases, Storage, ID } from "appwrite";
 import { launchImageLibrary } from "react-native-image-picker";
-import { ID } from "appwrite";
 import { Alert } from "react-native";
-import { Storage } from "appwrite"; // Ensure you are using the correct import
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 
-const client = new Client();
-client
-  .setEndpoint("https://cloud.appwrite.io/v1") // Replace with your Appwrite endpoint
-  .setProject("67d2d4400029f32f7259"); // Replace with your Project ID
+const client = new Client()
+  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setProject("67d2d4400029f32f7259");
 
-// Initialize Appwrite Databases
 const databases = new Databases(client);
-
-// Initialize Appwrite Account
 const account = new Account(client);
 const storage = new Storage(client);
-const bucketId = "67dbcd080010eecc3c4d"; // Replace with your Appwrite bucket ID
+const bucketId = "67dbcd080010eecc3c4d";
 
 // Register user
 export const registerUser = async (email, password, name) => {
   try {
-    const user = await account.create("unique()", email, password, name);
+    const user = await account.create(ID.unique(), email, password, name);
     return user;
   } catch (error) {
     console.error("Registration Error:", error);
@@ -81,7 +74,7 @@ export const getCurrentUser = async () => {
 export const resetPassword = async (email) => {
   try {
     await account.createRecovery(email, "app://password-reset");
-    alert("Password reset email sent!");
+    Alert.alert("Password reset email sent!");
   } catch (error) {
     console.error("Password Reset Error:", error);
   }
@@ -90,36 +83,46 @@ export const resetPassword = async (email) => {
 // Upload profile picture to Appwrite and update user prefs
 export const updateProfilePicture = async () => {
   try {
-    const result = await new Promise((resolve, reject) => {
-      launchImageLibrary({ mediaType: "photo", quality: 0.5 }, (response) => {
-        if (response.didCancel || response.errorCode || !response.assets) {
-          reject("Image selection cancelled or failed.");
-        } else {
-          resolve(response.assets[0]);
-        }
-      });
-    });
+    const options = {
+      mediaType: "photo",
+      quality: 0.8,
+      maxWidth: 512,
+      maxHeight: 512,
+    };
+    const response = await launchImageLibrary(options);
 
-    const { uri } = result;
-    const fileName = uri.split("/").pop();
+    if (response.didCancel) {
+      console.log("User cancelled image picker");
+      return null;
+    }
+    if (response.errorCode) {
+      throw new Error(`ImagePicker Error: ${response.errorMessage}`);
+    }
 
-    // Convert URI to a format Appwrite accepts
-    const fileContent = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    const asset = response.assets[0];
+    const fileUri = asset.uri;
+    const fileName = asset.fileName || `profile_${ID.unique()}.jpg`;
+    const mimeType = asset.type || "image/jpeg";
 
-    // Upload file
-    const uploadedFile = await storage.createFile(
-      bucketId,
-      ID.unique(),
-      Buffer.from(fileContent, "base64"),
-      fileName
-    );
+    // Read file content using expo-file-system
+    const fileInfo = await FileSystem.getInfoAsync(fileUri);
+    if (!fileInfo.exists) {
+      throw new Error("File does not exist");
+    }
 
-    const fileId = uploadedFile.$id;
+    // Create a File object for Appwrite
+    const file = {
+      uri: fileUri,
+      name: fileName,
+      type: mimeType,
+      size: fileInfo.size, // Include size to avoid undefined error
+    };
 
-    // Generate URL
-    const fileUrl = `https://cloud.appwrite.io/v1/storage/buckets/${bucketId}/files/${fileId}/view?project=67d2d4400029f32f7259`;
+    // Upload to Appwrite storage bucket
+    const uploadedFile = await storage.createFile(bucketId, ID.unique(), file);
+
+    // Get the file URL
+    const fileUrl = storage.getFileView(bucketId, uploadedFile.$id).href;
 
     // Update user preferences with the new profile picture URL
     await account.updatePrefs({ profilePicture: fileUrl });
@@ -127,23 +130,14 @@ export const updateProfilePicture = async () => {
     return fileUrl;
   } catch (error) {
     console.error("Error updating profile picture:", error);
-    throw error;
-  }
-};
-
-const uploadImageToAppwrite = async (uri) => {
-  try {
-    const file = await storage.createFile(bucketId, ID.unique(), uri);
-    return file.$id;
-  } catch (error) {
-    console.error("Image Upload Error:", error);
+    Alert.alert("Error", "Failed to update profile picture.");
     return null;
   }
 };
 
 // Initialize Appwrite Databases
-const databaseId = "67de6cb1003c63a59683"; // Replace with your actual Database ID
-const collectionId = "67e15b720007d994f573"; // Replace with your actual Collection ID
+const databaseId = "67de6cb1003c63a59683";
+const collectionId = "67e15b720007d994f573";
 
 export const handleCreateTask = async (
   title,
@@ -167,7 +161,20 @@ export const handleCreateTask = async (
 
   let imageFileId = null;
   if (image) {
-    imageFileId = await uploadImageToAppwrite(image);
+    const fileInfo = await FileSystem.getInfoAsync(image);
+    if (!fileInfo.exists) {
+      Alert.alert("Error", "Image file does not exist.");
+      return;
+    }
+
+    const file = {
+      uri: image,
+      name: `task_image_${ID.unique()}.jpg`,
+      type: "image/jpeg",
+      size: fileInfo.size,
+    };
+    const uploadedFile = await storage.createFile(bucketId, ID.unique(), file);
+    imageFileId = uploadedFile.$id;
   }
 
   try {
@@ -175,10 +182,11 @@ export const handleCreateTask = async (
       title,
       description,
       priority,
-      Deadline: deadline.toISOString(), // Ensure the deadline is formatted correctly
+      Deadline: deadline.toISOString(),
       Category,
       completed,
       schedule,
+      image: imageFileId,
     };
 
     const response = await databases.createDocument(
@@ -195,5 +203,4 @@ export const handleCreateTask = async (
   }
 };
 
-// Export
-export { client, databases, account };
+export { client, databases, account, storage, ID };

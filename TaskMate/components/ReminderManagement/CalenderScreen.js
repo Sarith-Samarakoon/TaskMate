@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Dimensions,
   Alert,
   Animated,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Calendar } from "react-native-calendars";
@@ -34,11 +35,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const CalendarScreen = () => {
   const [selectedDate, setSelectedDate] = useState("2025-03-04");
-  const [googleSync, setGoogleSync] = useState(true);
+  const [googleSync, setGoogleSync] = useState(false);
   const [outlookSync, setOutlookSync] = useState(false);
   const { theme } = useTheme();
   const navigation = useNavigation();
   const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -50,6 +52,7 @@ const CalendarScreen = () => {
     moment().format("YYYY-MM-DD")
   );
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState("All");
   const modalAnim = useRef(new Animated.Value(0)).current;
 
   const colors = {
@@ -63,6 +66,8 @@ const CalendarScreen = () => {
       inputBg: "#F8F9FA",
       border: "#E0E0E0",
       error: "#FF3B30",
+      filterActive: "#007AFF",
+      filterInactive: "#CCCCCC",
     },
     dark: {
       background: "#121212",
@@ -74,19 +79,77 @@ const CalendarScreen = () => {
       inputBg: "#333333",
       border: "#444444",
       error: "#FF453A",
+      filterActive: "#40C4FF",
+      filterInactive: "#666666",
     },
   };
 
   const themeColors = colors[theme];
 
+  // Function to open Google Calendar
+  const openGoogleCalendar = async () => {
+    const appUrl = "com.google.calendar://";
+    const webUrl = "https://calendar.google.com";
+
+    try {
+      const canOpen = await Linking.canOpenURL(appUrl);
+      if (canOpen) {
+        await Linking.openURL(appUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch (error) {
+      console.error("Error opening Google Calendar:", error);
+      Alert.alert("Error", "Failed to open Google Calendar. Please try again.");
+    }
+  };
+
+  // Function to open Outlook Calendar
+  const openOutlookCalendar = async () => {
+    const appUrl = "ms-outlook://calendar";
+    const webUrl = "https://outlook.live.com/calendar/";
+
+    try {
+      await Linking.openURL(appUrl);
+    } catch (error) {
+      console.error(
+        "Failed to open Outlook calendar, falling back to web:",
+        error
+      );
+      try {
+        await Linking.openURL(webUrl);
+      } catch (webError) {
+        console.error("Error opening Outlook web:", webError);
+        Alert.alert(
+          "Error",
+          "Failed to open Outlook Calendar. Please try again."
+        );
+      }
+    }
+  };
+
+  // Handle Google Calendar switch toggle
+  const handleGoogleSyncToggle = (value) => {
+    setGoogleSync(value);
+    if (value) {
+      openGoogleCalendar();
+    }
+  };
+
+  // Handle Outlook Calendar switch toggle
+  const handleOutlookSyncToggle = (value) => {
+    setOutlookSync(value);
+    if (value) {
+      openOutlookCalendar();
+    }
+  };
+
   const animateModal = (visible) => {
-    console.log("Animating modal, visible:", visible);
     Animated.timing(modalAnim, {
       toValue: visible ? 1 : 0,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      console.log("Animation completed, modalVisible:", modalVisible);
       if (!visible) {
         setModalVisible(false);
       }
@@ -94,13 +157,11 @@ const CalendarScreen = () => {
   };
 
   const openModal = () => {
-    console.log("Opening modal");
     setModalVisible(true);
     animateModal(true);
   };
 
   const closeModal = () => {
-    console.log("Closing modal");
     animateModal(false);
   };
 
@@ -111,6 +172,7 @@ const CalendarScreen = () => {
         tasksCollectionId
       );
       setTasks(response.documents);
+      setFilteredTasks(response.documents);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching tasks: ", error);
@@ -119,10 +181,19 @@ const CalendarScreen = () => {
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       fetchTasks();
     }, [])
   );
+
+  const filterTasks = (filterType) => {
+    setFilter(filterType);
+    if (filterType === "All") {
+      setFilteredTasks(tasks);
+    } else {
+      setFilteredTasks(tasks.filter((task) => task.schedule === filterType));
+    }
+  };
 
   const formatDeadline = (deadline) => {
     return moment(deadline).format("MMMM Do YYYY, h:mm a");
@@ -147,7 +218,6 @@ const CalendarScreen = () => {
       <TouchableOpacity
         style={styles.reminderButton}
         onPress={() => {
-          console.log("Task selected:", item.title);
           setSelectedTask(item);
           setReminderDate(selectedDate);
           openModal();
@@ -190,11 +260,11 @@ const CalendarScreen = () => {
       }
 
       const formattedDateTime = reminderDateTime.format("DD/MM/YYYY h:mm A");
-      const isoFormattedDateTime = reminderDateTime.toISOString(); // ISO 8601 for SetTime
-      const isoFormattedDate = reminderDateTime.format("YYYY-MM-DD"); // ISO 8601 date part for SetDate
+      const isoFormattedDateTime = reminderDateTime.toISOString();
+      const isoFormattedDate = reminderDateTime.format("YYYY-MM-DD");
       const isoFormattedSelectedDate = moment(selectedDate, "YYYY-MM-DD")
         .startOf("day")
-        .toISOString(); // ISO 8601 for Date
+        .toISOString();
 
       await databases.createDocument(
         databaseId,
@@ -202,10 +272,10 @@ const CalendarScreen = () => {
         "unique()",
         {
           TaskTitle: selectedTask.title,
-          Date: isoFormattedSelectedDate, // Now in ISO 8601 format
+          Date: isoFormattedSelectedDate,
           Note: note || null,
-          SetTime: isoFormattedDateTime, // Now in ISO 8601 format
-          SetDate: isoFormattedDate, // Already in YYYY-MM-DD
+          SetTime: isoFormattedDateTime,
+          SetDate: isoFormattedDate,
         }
       );
 
@@ -308,6 +378,36 @@ const CalendarScreen = () => {
           style={styles.calendar}
         />
 
+        <View style={styles.filterContainer}>
+          {["All", "Daily", "Weekly", "Monthly"].map((filterType) => (
+            <TouchableOpacity
+              key={filterType}
+              style={[
+                styles.filterButton,
+                {
+                  backgroundColor:
+                    filter === filterType
+                      ? themeColors.filterActive
+                      : themeColors.inputBg,
+                  borderColor: themeColors.border,
+                },
+              ]}
+              onPress={() => filterTasks(filterType)}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  {
+                    color: filter === filterType ? "#FFFFFF" : themeColors.text,
+                  },
+                ]}
+              >
+                {filterType}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
           TODAY'S TASKS
         </Text>
@@ -315,9 +415,13 @@ const CalendarScreen = () => {
           <Text style={[styles.loadingText, { color: themeColors.subText }]}>
             Loading tasks...
           </Text>
+        ) : filteredTasks.length === 0 ? (
+          <Text style={[styles.loadingText, { color: themeColors.subText }]}>
+            No tasks found for this filter.
+          </Text>
         ) : (
           <FlatList
-            data={tasks}
+            data={filteredTasks}
             keyExtractor={(item) => item.$id}
             renderItem={renderTaskItem}
           />
@@ -330,13 +434,13 @@ const CalendarScreen = () => {
           <Text style={[styles.calendarText, { color: themeColors.text }]}>
             Google Calendar
           </Text>
-          <Switch value={googleSync} onValueChange={setGoogleSync} />
+          <Switch value={googleSync} onValueChange={handleGoogleSyncToggle} />
         </View>
         <View style={styles.calendarSync}>
           <Text style={[styles.calendarText, { color: themeColors.text }]}>
-            Outlook
+            Outlook Calendar
           </Text>
-          <Switch value={outlookSync} onValueChange={setOutlookSync} />
+          <Switch value={outlookSync} onValueChange={handleOutlookSyncToggle} />
         </View>
 
         {/* Reminder Modal */}
@@ -466,7 +570,7 @@ const CalendarScreen = () => {
                       {
                         backgroundColor: themeColors.inputBg,
                         color: themeColors.text,
-                        borderColor: error
+                        border植物Color: error
                           ? themeColors.error
                           : themeColors.border,
                       },
@@ -608,6 +712,24 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     marginTop: 15,
     marginBottom: 10,
+  },
+  filterContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    marginBottom: 10,
+  },
+  filterButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   taskItem: {
     flexDirection: "row",
