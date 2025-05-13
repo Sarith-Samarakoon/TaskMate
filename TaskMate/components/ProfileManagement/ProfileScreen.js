@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   activeTabText: { color: "#FF00FF", fontWeight: "bold" },
 
   progressContainer: {
-    marginHorizontal: 20,
+    marginHorizontal: 10,
     padding: 15,
     borderRadius: 10,
     backgroundColor: "#FFF",
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   progressItem: { marginBottom: 15 },
   progressLabel: { fontSize: 16, fontWeight: "bold", marginBottom: 5 },
   progressRow: { flexDirection: "row", alignItems: "center" },
-  progressBar: { flex: 1, height: 10, borderRadius: 5, marginRight: 10 },
+  progressBar: { flex: 1, height: 10, borderRadius: 5, marginRight: 10, width:310 },
   progressValue: { fontSize: 14 },
 
   rewardsContainer: {
