@@ -17,11 +17,12 @@ import TopBar from "../MenuBars/TopBar";
 import { useNavigation } from '@react-navigation/native';
 import { databases } from "../../lib/appwriteConfig";
 import { MaterialIcons } from "@expo/vector-icons";
+import moment from "moment";
 
 const HistoryScreen = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
-  const [selectedTab, setSelectedTab] = useState("Completed");
+  const [selectedTab, setSelectedTab] = useState("View all");
   const [selectedPeriod, setSelectedPeriod] = useState("Monthly");
   const [tasks, setTasks] = useState([]);
   const [completedTasks, setCompletedTasks] = useState([]);
@@ -40,7 +41,6 @@ const HistoryScreen = () => {
         setTasks(allTasks);
         setCompletedTasks(allTasks.filter(task => task.completed === true));
         setInProgressTasks(allTasks.filter(task => task.completed === false));
-        checkDailyCompletions(allTasks.filter(task => task.completed === true)); // Check on load
       } catch (error) {
         console.error("Error fetching tasks:", error);
       }
@@ -48,7 +48,26 @@ const HistoryScreen = () => {
     fetchTasks();
   }, []);
 
-  // Calculate pie chart data with whole number percentages and append % symbol
+  // Format date to be more user-friendly
+  const formatDate = (dateString) => {
+    if (!dateString) return "No deadline";
+    
+    const date = moment(dateString);
+    if (!date.isValid()) return "Invalid date";
+    
+    const now = moment();
+    const diffDays = date.diff(now, 'days');
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Tomorrow";
+    if (diffDays === -1) return "Yesterday";
+    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
+    if (diffDays < 7) return `In ${diffDays} days`;
+    
+    return date.format("MMM D, YYYY");
+  };
+
+  // Calculate pie chart data with whole number percentages
   const totalTasks = completedTasks.length + inProgressTasks.length;
   const completedPercentage = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
   const inProgressPercentage = totalTasks > 0 ? Math.round((inProgressTasks.length / totalTasks) * 100) : 0;
@@ -90,9 +109,6 @@ const HistoryScreen = () => {
       setTasks(allTasks);
       setCompletedTasks(allTasks.filter(task => task.completed === true));
       setInProgressTasks(allTasks.filter(task => task.completed === false));
-      if (newCompletedStatus) {
-        checkDailyCompletions(allTasks.filter(task => task.completed === true));
-      }
     } catch (error) {
       console.error("Error updating task completion status:", error);
     }
@@ -154,30 +170,37 @@ const HistoryScreen = () => {
     }
   };
 
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case 'high': return '#FF3B30';
+      case 'medium': return '#FF9500';
+      case 'low': return '#34C759';
+      default: return theme === "dark" ? "#fff" : "#333";
+    }
+  };
+
   const renderItem = ({ item }) => (
     <View style={[styles.taskItem, theme === "dark" && styles.darkTaskItem]}>
       <View style={styles.taskHeader}>
-        <Text style={[styles.taskTitle, theme === "dark" && styles.darkText]}>
-          {item.title}
-        </Text>
+        <View style={styles.taskTitleContainer}>
+          <MaterialIcons
+            name={item.completed ? "check-circle" : "radio-button-unchecked"}
+            size={20}
+            color={item.completed ? "#52C41A" : theme === "dark" ? "#fff" : "#333"}
+            style={styles.statusIcon}
+          />
+          <Text style={[styles.taskTitle, theme === "dark" && styles.darkText]}>
+            {item.title}
+          </Text>
+        </View>
         <View style={styles.taskActions}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => markTaskAsCompleted(item.$id)}
-          >
-            <MaterialIcons
-              name={item.completed ? "check-circle" : "check-circle-outline"}
-              size={24}
-              color={item.completed ? "#52C41A" : theme === "dark" ? "#fff" : "#333"}
-            />
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => openEditModal(item)}
           >
             <MaterialIcons
               name="edit"
-              size={24}
+              size={20}
               color={theme === "dark" ? "#fff" : "#333"}
             />
           </TouchableOpacity>
@@ -187,22 +210,44 @@ const HistoryScreen = () => {
           >
             <MaterialIcons
               name="delete"
-              size={24}
+              size={20}
               color={theme === "dark" ? "#fff" : "#333"}
             />
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={[styles.taskDescription, theme === "dark" && styles.darkText]}>
-        {item.description || "No description"}
-      </Text>
+      
+      {item.description && (
+        <Text style={[styles.taskDescription, theme === "dark" && styles.darkText]}>
+          {item.description}
+        </Text>
+      )}
+      
       <View style={styles.taskFooter}>
-        <Text style={[styles.taskDate, theme === "dark" && styles.darkText]}>
-          Deadline: {item.Deadline}
-        </Text>
-        <Text style={[styles.taskPriority, theme === "dark" && styles.darkText]}>
-          Priority: {item.priority}
-        </Text>
+        <View style={styles.taskMeta}>
+          <MaterialIcons
+            name="access-time"
+            size={16}
+            color={theme === "dark" ? "#aaa" : "#666"}
+          />
+          <Text style={[styles.taskDate, theme === "dark" && styles.darkText]}>
+            {formatDate(item.Deadline)}
+          </Text>
+        </View>
+        
+        <View style={styles.taskMeta}>
+          <MaterialIcons
+            name="priority-high"
+            size={16}
+            color={getPriorityColor(item.priority)}
+          />
+          <Text style={[
+            styles.taskPriority, 
+            { color: getPriorityColor(item.priority) }
+          ]}>
+            {item.priority || 'No priority'}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -213,32 +258,72 @@ const HistoryScreen = () => {
 
   return (
     <View style={[styles.container, theme === "dark" ? styles.darkContainer : styles.lightContainer]}>
-      <TopBar title="History" />
+      <TopBar title="Task History" />
+      
       <View style={styles.progressContainer}>
-        <Text style={[styles.chartTitle, theme === "dark" && styles.darkText]}>Task Distribution</Text>
+        <Text style={[styles.sectionTitle, theme === "dark" && styles.darkText]}>
+          Your Task Overview
+        </Text>
+        
         {totalTasks === 0 ? (
-          <Text style={[styles.noTasksText, theme === "dark" && styles.darkText]}>
-            No tasks available
-          </Text>
+          <View style={styles.emptyState}>
+            <MaterialIcons
+              name="assignment"
+              size={40}
+              color={theme === "dark" ? "#555" : "#ccc"}
+            />
+            <Text style={[styles.emptyStateText, theme === "dark" && styles.darkText]}>
+              No tasks to display
+            </Text>
+          </View>
         ) : (
-          <PieChart
-            data={pieChartData}
-            width={Dimensions.get("window").width * 0.9}
-            height={220}
-            chartConfig={{
-              backgroundGradientFrom: theme === "dark" ? "#121212" : "#fff",
-              backgroundGradientTo: theme === "dark" ? "#121212" : "#fff",
-              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              labelColor: (opacity = 1) => theme === "dark" ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
-            }}
-            accessor="population"
-            backgroundColor="transparent"
-            paddingLeft="15"
-            absolute
-            hasLegend={true}
-            center={[10, 0]}
-            style={styles.pieChart}
-          />
+          <>
+            <PieChart
+              data={pieChartData}
+              width={Dimensions.get("window").width * 0.9}
+              height={220}
+              chartConfig={{
+                backgroundGradientFrom: theme === "dark" ? "#121212" : "#fff",
+                backgroundGradientTo: theme === "dark" ? "#121212" : "#fff",
+                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                labelColor: (opacity = 1) => theme === "dark" ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+              }}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+              hasLegend={true}
+              center={[10, 0]}
+              style={styles.pieChart}
+            />
+            
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, theme === "dark" && styles.darkText]}>
+                  {totalTasks}
+                </Text>
+                <Text style={[styles.statLabel, theme === "dark" && styles.darkText]}>
+                  Total Tasks
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, {color: '#52C41A'}]}>
+                  {completedTasks.length}
+                </Text>
+                <Text style={[styles.statLabel, theme === "dark" && styles.darkText]}>
+                  Completed
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={[styles.statNumber, {color: '#1E88E5'}]}>
+                  {inProgressTasks.length}
+                </Text>
+                <Text style={[styles.statLabel, theme === "dark" && styles.darkText]}>
+                  In Progress
+                </Text>
+              </View>
+            </View>
+          </>
         )}
       </View>
 
@@ -246,20 +331,41 @@ const HistoryScreen = () => {
         {["View all", "In Progress", "Completed"].map((tab) => (
           <TouchableOpacity
             key={tab}
-            style={[styles.tab, selectedTab === tab && styles.selectedTab, theme === "dark" && styles.darkTab]}
+            style={[
+              styles.tab, 
+              selectedTab === tab && styles.selectedTab, 
+              theme === "dark" && styles.darkTab
+            ]}
             onPress={() => setSelectedTab(tab)}
           >
-            <Text style={[styles.tabText, selectedTab === tab && styles.selectedTabText, theme === "dark" && styles.darkText]}>
+            <Text style={[
+              styles.tabText, 
+              selectedTab === tab && styles.selectedTabText, 
+              theme === "dark" && styles.darkText
+            ]}>
               {tab}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <View style={styles.tasksHeader}>
-        <Text style={[styles.tasksTitle, theme === "dark" && styles.darkText]}>Tasks</Text>
-        <TouchableOpacity onPress={navigateToGoals}>
-          <Text style={[styles.viewAllText, theme === "dark" && styles.darkText]}>View All Goals</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, theme === "dark" && styles.darkText]}>
+          {selectedTab === "Completed" ? "Completed Tasks" : 
+           selectedTab === "In Progress" ? "Tasks In Progress" : "All Tasks"}
+        </Text>
+        <TouchableOpacity 
+          style={styles.viewAllButton}
+          onPress={navigateToGoals}
+        >
+          <Text style={[styles.viewAllText, theme === "dark" && styles.darkText]}>
+            View Goals
+          </Text>
+          <MaterialIcons
+            name="chevron-right"
+            size={18}
+            color={theme === "dark" ? "#fff" : "#4C68FF"}
+          />
         </TouchableOpacity>
       </View>
 
@@ -269,55 +375,98 @@ const HistoryScreen = () => {
             ? completedTasks
             : selectedTab === "In Progress"
             ? inProgressTasks
-            : inProgressTasks.concat(completedTasks)
+            : [...inProgressTasks, ...completedTasks]
         }
         keyExtractor={(item) => item.$id}
         renderItem={renderItem}
         contentContainerStyle={styles.taskList}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <MaterialIcons
+              name="assignment"
+              size={40}
+              color={theme === "dark" ? "#555" : "#ccc"}
+            />
+            <Text style={[styles.emptyStateText, theme === "dark" && styles.darkText]}>
+              No {selectedTab.toLowerCase()} tasks found
+            </Text>
+          </View>
+        }
       />
 
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, theme === "dark" && styles.darkModalContent]}>
-            <Text style={[styles.modalTitle, theme === "dark" && styles.darkText]}>Update Task</Text>
+            <Text style={[styles.modalTitle, theme === "dark" && styles.darkText]}>
+              Update Task
+            </Text>
+            
+            <Text style={[styles.inputLabel, theme === "dark" && styles.darkText]}>
+              Title
+            </Text>
             <TextInput
               style={[styles.input, theme === "dark" && styles.darkInput]}
-              placeholder="Title"
+              placeholder="Enter task title"
               placeholderTextColor={theme === "dark" ? "#ccc" : "#999"}
               value={taskToEdit?.title}
               onChangeText={(text) => setTaskToEdit({ ...taskToEdit, title: text })}
             />
+            
+            <Text style={[styles.inputLabel, theme === "dark" && styles.darkText]}>
+              Description
+            </Text>
             <TextInput
-              style={[styles.input, theme === "dark" && styles.darkInput]}
-              placeholder="Description"
+              style={[
+                styles.input, 
+                styles.multilineInput,
+                theme === "dark" && styles.darkInput
+              ]}
+              placeholder="Enter description (optional)"
               placeholderTextColor={theme === "dark" ? "#ccc" : "#999"}
               value={taskToEdit?.description}
               onChangeText={(text) => setTaskToEdit({ ...taskToEdit, description: text })}
+              multiline
             />
+            
+            <Text style={[styles.inputLabel, theme === "dark" && styles.darkText]}>
+              Priority
+            </Text>
+            <Picker
+              selectedValue={taskToEdit?.priority}
+              onValueChange={(value) => setTaskToEdit({ ...taskToEdit, priority: value })}
+              style={[styles.picker, theme === "dark" && styles.darkPicker]}
+              dropdownIconColor={theme === "dark" ? "#fff" : "#333"}
+            >
+              <Picker.Item label="Select priority" value="" />
+              <Picker.Item label="High" value="High" />
+              <Picker.Item label="Medium" value="Medium" />
+              <Picker.Item label="Low" value="Low" />
+            </Picker>
+            
+            <Text style={[styles.inputLabel, theme === "dark" && styles.darkText]}>
+              Deadline
+            </Text>
             <TextInput
               style={[styles.input, theme === "dark" && styles.darkInput]}
-              placeholder="Priority"
-              placeholderTextColor={theme === "dark" ? "#ccc" : "#999"}
-              value={taskToEdit?.priority}
-              onChangeText={(text) => setTaskToEdit({ ...taskToEdit, priority: text })}
-            />
-            <TextInput
-              style={[styles.input, theme === "dark" && styles.darkInput]}
-              placeholder="Deadline"
+              placeholder="YYYY-MM-DD"
               placeholderTextColor={theme === "dark" ? "#ccc" : "#999"}
               value={taskToEdit?.Deadline}
               onChangeText={(text) => setTaskToEdit({ ...taskToEdit, Deadline: text })}
             />
-            <TextInput
-              style={[styles.input, theme === "dark" && styles.darkInput]}
-              placeholder="Schedule"
-              placeholderTextColor={theme === "dark" ? "#ccc" : "#999"}
-              value={taskToEdit?.schedule}
-              onChangeText={(text) => setTaskToEdit({ ...taskToEdit, schedule: text })}
-            />
+            
             <View style={styles.modalButtons}>
-              <Button title="Cancel" onPress={closeEditModal} />
-              <Button title="Save" onPress={updateTask} />
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={closeEditModal}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={updateTask}
+              >
+                <Text style={styles.modalButtonText}>Save Changes</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -327,23 +476,34 @@ const HistoryScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1,
+    paddingBottom: 20,
+  },
   lightContainer: { backgroundColor: "#F8F9FA" },
   darkContainer: { backgroundColor: "#121212" },
   progressContainer: {
     alignItems: "center",
     marginVertical: 20,
-    marginHorizontal: 10,
+    marginHorizontal: 16,
   },
-  chartTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 16,
     color: "#333",
+    alignSelf: 'flex-start',
   },
-  noTasksText: {
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
     fontSize: 16,
-    color: "#333",
+    color: "#666",
+    marginTop: 10,
+    textAlign: 'center',
   },
   pieChart: {
     borderRadius: 10,
@@ -354,72 +514,138 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     marginVertical: 10,
   },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 20,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
   tabs: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 15,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   tab: {
-    padding: 10,
-    marginHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: "#E0E0E0",
-    minWidth: 100,
-    alignItems: "center",
+    marginHorizontal: 6,
   },
-  selectedTab: { backgroundColor: "#4C68FF" },
-  darkTab: { backgroundColor: "#444" },
-  tabText: { fontSize: 16, color: "#333" },
-  selectedTabText: { color: "#fff", fontWeight: "bold" },
-  tasksHeader: {
+  selectedTab: { 
+    backgroundColor: "#4C68FF" 
+  },
+  darkTab: { 
+    backgroundColor: "#333" 
+  },
+  tabText: { 
+    fontSize: 14, 
+    color: "#333",
+    fontWeight: '500',
+  },
+  selectedTabText: { 
+    color: "#fff", 
+    fontWeight: "600" 
+  },
+  sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginHorizontal: 20,
-    marginVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
   },
-  tasksTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   viewAllText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#4C68FF",
     fontWeight: "500",
   },
-  taskList: { paddingHorizontal: 20 },
+  taskList: { 
+    paddingHorizontal: 16,
+  },
   taskItem: {
-    padding: 15,
+    padding: 16,
     backgroundColor: "#fff",
     borderRadius: 12,
-    marginBottom: 10,
-    elevation: 3,
+    marginBottom: 12,
+    elevation: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-  darkTaskItem: { backgroundColor: "#1e1e1e" },
+  darkTaskItem: { 
+    backgroundColor: "#1e1e1e",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+  },
   taskHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 8,
   },
-  taskTitle: { fontSize: 16, fontWeight: "bold", color: "#333" },
-  taskDescription: { fontSize: 14, marginVertical: 5, color: "#555" },
+  taskTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  statusIcon: {
+    marginRight: 8,
+  },
+  taskTitle: { 
+    fontSize: 16, 
+    fontWeight: "600", 
+    color: "#333",
+    flex: 1,
+  },
+  taskDescription: { 
+    fontSize: 14, 
+    color: "#555",
+    marginBottom: 12,
+    lineHeight: 20,
+  },
   taskFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  taskDate: { fontSize: 14, color: "#666" },
-  taskPriority: { fontSize: 14, color: "#666" },
+  taskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taskDate: { 
+    fontSize: 13, 
+    color: "#666",
+    marginLeft: 4,
+  },
+  taskPriority: { 
+    fontSize: 13,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
   taskActions: {
     flexDirection: "row",
   },
   iconButton: {
-    marginLeft: 10,
+    marginLeft: 12,
   },
   darkText: { color: "#fff" },
   modalContainer: {
@@ -430,9 +656,9 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    width: "80%",
+    padding: 24,
+    borderRadius: 12,
+    width: "90%",
     maxWidth: 400,
   },
   darkModalContent: {
@@ -441,20 +667,45 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 20,
     color: "#333",
+    textAlign: 'center',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 6,
+    marginTop: 12,
   },
   input: {
-    height: 40,
-    borderColor: "#ccc",
+    height: 48,
+    borderColor: "#ddd",
     borderWidth: 1,
-    marginBottom: 15,
     borderRadius: 8,
-    paddingLeft: 10,
+    paddingHorizontal: 12,
     color: "#333",
     backgroundColor: "#fff",
+    fontSize: 15,
+  },
+  multilineInput: {
+    height: 100,
+    textAlignVertical: 'top',
+    paddingTop: 12,
   },
   darkInput: {
+    backgroundColor: "#333",
+    color: "#fff",
+    borderColor: "#555",
+  },
+  picker: {
+    height: 48,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+  },
+  darkPicker: {
     backgroundColor: "#333",
     color: "#fff",
     borderColor: "#555",
@@ -462,6 +713,25 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginTop: 24,
+  },
+  modalButton: {
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 6,
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  saveButton: {
+    backgroundColor: '#4C68FF',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 
