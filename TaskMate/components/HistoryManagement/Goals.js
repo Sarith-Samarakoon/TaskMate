@@ -30,6 +30,10 @@ const GoalsScreen = () => {
     }
   };
 
+  // Calculate Total Goal Progress
+  const completedGoals = goals.filter(goal => goal.Completed).length;
+  const totalGoals = goals.length;
+
   // Delete Goal
   const deleteGoal = async (goalId) => {
     try {
@@ -39,8 +43,29 @@ const GoalsScreen = () => {
         goalId
       );
       setGoals(goals.filter(goal => goal.$id !== goalId));
+      Alert.alert("Success", "Goal has been deleted.");
     } catch (error) {
       console.error("Error deleting goal:", error);
+      Alert.alert("Error", "Failed to delete goal.");
+    }
+  };
+
+  // Complete Goal
+  const completeGoal = async (goalId, currentStatus) => {
+    try {
+      await databases.updateDocument(
+        "67de6cb1003c63a59683",
+        "67e16137002384116add",
+        goalId,
+        {
+          Completed: !currentStatus,
+        }
+      );
+      fetchGoals();
+      Alert.alert("Success", `Goal marked as ${!currentStatus ? 'completed' : 'incomplete'}.`);
+    } catch (error) {
+      console.error("Error completing goal:", error);
+      Alert.alert("Error", "Failed to update goal status.");
     }
   };
 
@@ -65,19 +90,15 @@ const GoalsScreen = () => {
           GoalName: selectedGoal.GoalName,
           TimeFrame: selectedGoal.TimeFrame,
           GoalNote: selectedGoal.GoalNote,
+          Completed: selectedGoal.Completed || false,
         }
       );
-      fetchGoals(); // Refresh goals list
+      fetchGoals();
       setModalVisible(false);
-      // Show toast notification
-      Toast.show({
-        type: "success",
-        text1: "Success",
-        text2: "Your Goal is Updated!",
-      });
-
+      Alert.alert("Success", "Your Goal is Updated!");
     } catch (error) {
       console.error("Error updating goal:", error);
+      Alert.alert("Error", "Failed to update goal.");
     }
   };
 
@@ -102,15 +123,16 @@ const GoalsScreen = () => {
       {/* Goals Overview */}
       <View style={styles.goalSummaryContainer}>
         <View style={styles.goalCard}>
-          <Text style={styles.goalCardTitle}>Daily Goal</Text>
-          <Text style={styles.goalProgress}>6/8</Text>
+          <Text style={styles.goalCardTitle}>Total Goals</Text>
+          <Text style={styles.goalProgress}>{completedGoals}/{totalGoals}</Text>
           <Text style={styles.goalSubtext}>Goals completed</Text>
         </View>
-        <View style={styles.goalCard}>
-          <Text style={styles.goalCardTitle}>Weekly Goal</Text>
-          <Text style={styles.goalProgress}>24/30</Text>
-          <Text style={styles.goalSubtext}>Goals completed</Text>
-        </View>
+
+        {/* <View style={styles.goalCard}>
+          <Text style={styles.goalCardTitle}>Suggest Goals</Text>
+          <Text style={styles.goalProgress}>{completedGoals}/{totalGoals}</Text>
+          <Text style={styles.goalSubtext}> Suggest Goals completed</Text>
+        </View> */}
       </View>
 
       {/* Goal List */}
@@ -119,10 +141,22 @@ const GoalsScreen = () => {
           data={goals}
           keyExtractor={(item) => item.$id}
           renderItem={({ item }) => (
-            <View style={styles.goalItem}>
-              <Ionicons name="calendar" size={24} color="#6A5AE0" style={styles.goalIcon} />
+            <View style={[styles.goalItem, item.Completed ? styles.goalItemCompleted : null]}>
+              <Ionicons 
+                name={item.Completed ? "checkmark-circle" : "calendar"} 
+                size={24} 
+                color={item.Completed ? "#28A745" : "#6A5AE0"} 
+                style={styles.goalIcon} 
+              />
               <View style={styles.goalTextContainer}>
-                <Text style={styles.goalTitle}>{item.GoalName}</Text>
+                <Text 
+                  style={[
+                    styles.goalTitle, 
+                    item.Completed ? styles.goalTitleCompleted : null
+                  ]}
+                >
+                  {item.GoalName}
+                </Text>
                 <Text style={styles.goalDetails}>Timeframe: {item.TimeFrame}</Text>
                 <Text style={styles.goalDetails}>Note: {item.GoalNote}</Text>
               </View>
@@ -131,6 +165,13 @@ const GoalsScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity onPress={() => deleteGoal(item.$id)}>
                 <MaterialIcons name="delete" size={20} color="red" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => completeGoal(item.$id, item.Completed)}>
+                <MaterialIcons 
+                  name={item.Completed ? "undo" : "check"} 
+                  size={20} 
+                  color={item.Completed ? "#FF5733" : "#28A745"} 
+                />
               </TouchableOpacity>
             </View>
           )}
@@ -172,8 +213,6 @@ const GoalsScreen = () => {
         </View>
       </Modal>
     </View>
-
-
   );
 };
 
@@ -181,7 +220,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-
   },
   header: {
     flexDirection: 'row',
@@ -189,7 +227,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#fffff',
+    backgroundColor: '#fff',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -215,7 +253,7 @@ const styles = StyleSheet.create({
   },
   goalSummaryContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     marginVertical: 20,
   },
   goalCard: {
@@ -258,6 +296,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  goalItemCompleted: {
+    backgroundColor: '#E8F5E9',
+  },
   goalTextContainer: {
     flex: 1,
     paddingLeft: 10,
@@ -267,9 +308,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  goalTitleCompleted: {
+    textDecorationLine: 'line-through',
+    color: '#555',
+  },
   goalDetails: {
     fontSize: 14,
     color: '#555',
+  },
+  goalIcon: {
+    marginRight: 10,
   },
   modalContainer: {
     flex: 1,
@@ -340,6 +388,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
 
 export default GoalsScreen;
