@@ -99,6 +99,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 32,
     paddingBottom: 48,
+    marginBottom: 40,
   },
   appName: {
     fontSize: 28,
@@ -109,7 +110,8 @@ const styles = StyleSheet.create({
   mainImage: {
     width: width * 0.85,
     height: height * 0.35,
-    marginBottom: 32,
+    marginBottom: 30,
+    marginTop: 40,
   },
   featureTitle: {
     fontSize: 24,
@@ -117,19 +119,20 @@ const styles = StyleSheet.create({
     color: "#1D4ED8",
     textAlign: "center",
     marginBottom: 16,
+    marginTop: 80,
   },
   featureDescription: {
     fontSize: 16,
     color: "#000",
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: 40,
+    marginBottom: 30,
   },
   button: {
     backgroundColor: "#007AFF",
     width: "100%",
     paddingVertical: 16,
-    borderRadius: 30,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#007AFF",

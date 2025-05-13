@@ -310,8 +310,9 @@ const ProfileScreen = () => {
         <Image
           source={{
             uri:
-              user?.prefs?.profilePicture ||
-              "https://i.pinimg.com/736x/38/41/97/384197530d32338dd6caafaf1c6a26c4.jpg",
+              user?.profilePicture ||
+              "https://i.pinimg.com/736x/0b/97/6f/0b976f0a7aa1aa43870e1812eee5a55d.jpg",
+
           }}
           style={styles.profileImage}
         />
@@ -460,13 +461,13 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 3,
-    borderColor: "#00FF00",
+    borderColor: "green", // Green border as in screenshot
+
   },
   editIcon: {
     position: "absolute",
     top: 0,
-    right: 130,
+    right: 140,
     backgroundColor: "#007AFF",
     padding: 6,
     borderRadius: 15,
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: "bold", marginTop: 10 },
   email: { fontSize: 14, marginBottom: 5 },
   statusBadge: {
-    backgroundColor: "#00FF00",
+    backgroundColor: "green",
     borderRadius: 15,
     paddingHorizontal: 10,
     paddingVertical: 5,

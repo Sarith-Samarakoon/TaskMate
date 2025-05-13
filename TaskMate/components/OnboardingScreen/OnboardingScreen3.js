@@ -91,14 +91,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 40,
+    marginBottom: 10,
   },
   mainImage: {
     width: width * 0.9,
     height: height * 0.35,
-    marginBottom: 20,
+    marginBottom: 50,
+    marginTop: 90,
   },
   textContainer: {
     marginBottom: 30,
+    marginTop:80,
     alignItems: "center",
   },
   title: {
@@ -119,7 +122,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#007AFF",
     paddingVertical: 16,
     paddingHorizontal: 32,
-    borderRadius: 30,
+    borderRadius: 10,
     width: width * 0.8,
     alignItems: "center",
   },

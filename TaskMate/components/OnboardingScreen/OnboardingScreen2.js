@@ -122,18 +122,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   image: {
-    width: width * 0.8,
-    height: height * 0.3,
+    width: width * 0.9,
+    height: height * 0.4,
+    marginBottom: 10,
+    marginTop: 20
   },
   onboardingTextContainer: {
-    marginBottom: 32,
+    marginBottom:30,
+    marginTop:10,
     alignItems: "center",
   },
   onboardingTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#1D4ED8",
-    marginBottom: 12,
+    marginBottom: 6,
+    marginTop: 10,
     textAlign: "center",
   },
   onboardingDescription: {
@@ -141,11 +145,13 @@ const styles = StyleSheet.create({
     color: "#000",
     textAlign: "center",
     lineHeight: 24,
+    marginBottom: 2,
   },
+
   nextButton: {
     backgroundColor: "#007AFF",
     paddingVertical: 16,
-    borderRadius: 30,
+    borderRadius: 10,
     alignItems: "center",
     shadowColor: "#007AFF",
     shadowOffset: { width: 0, height: 4 },
