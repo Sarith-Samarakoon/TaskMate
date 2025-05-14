@@ -108,7 +108,7 @@ const Screen = ({ navigation }) => {
 
   const handlePredict = async (task) => {
     try {
-      const response = await fetch("http://192.168.1.5:5000/predict", {
+      const response = await fetch("http://192.168.0.91:5000/predict", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

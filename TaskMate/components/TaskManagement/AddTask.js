@@ -130,7 +130,7 @@ const CreateTaskScreen = () => {
         numberOfLines={4}
       />
 
-      {/* Image Picker */}
+      {/* Image Picker
       <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
         <Text style={styles.imageButtonText}>
           {image ? "Change Image" : "Add Image"}
@@ -141,7 +141,7 @@ const CreateTaskScreen = () => {
         <View style={styles.imagePreview}>
           <Image source={{ uri: image }} style={styles.image} />
         </View>
-      )}
+      )} */}
 
       <View style={styles.row}>
         <View style={styles.pickerContainer}>
