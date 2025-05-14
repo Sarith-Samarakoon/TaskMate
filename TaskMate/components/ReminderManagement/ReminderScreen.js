@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   Button,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -151,9 +152,9 @@ const ReminderScreen = () => {
         upcoming: prev.upcoming.filter((item) => item.id !== id),
         missed: prev.missed.filter((item) => item.id !== id),
       }));
-      console.log("Reminder deleted successfully!");
+      Alert.alert("Reminder deleted successfully!");
     } catch (error) {
-      console.error("Error deleting reminder:", error);
+      Alert.alert("Error deleting reminder:", error);
     }
   };
 
@@ -192,9 +193,9 @@ const ReminderScreen = () => {
       await fetchReminders(); // Refresh reminders to re-categorize
 
       setModalVisible(false);
-      console.log("Reminder updated successfully!");
+      Alert.alert("Reminder updated successfully!");
     } catch (error) {
-      console.error("Error updating reminder:", error);
+      Alert.alert("Error updating reminder:", error);
     }
   };
 

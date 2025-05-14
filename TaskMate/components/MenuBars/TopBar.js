@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "bold",
-    marginTop:30
+    marginTop: 30,
   },
   lightText: {
     color: "#0047AB",
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   rightSection: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop:30
+    marginTop: 30,
   },
   profileContainer: {
     flexDirection: "row",
