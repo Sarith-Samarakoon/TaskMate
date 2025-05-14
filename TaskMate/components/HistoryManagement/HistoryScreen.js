@@ -76,7 +76,7 @@ const HistoryScreen = () => {
     {
       name: "Completed",
       population: completedPercentage,
-      color: "#52C41A",
+      color: "#74BBFB",
       legendFontColor: theme === "dark" ? "#fff" : "#333",
       legendFontSize: 14,
       formattedValue: `${completedPercentage}%`,
@@ -84,7 +84,7 @@ const HistoryScreen = () => {
     {
       name: "In Progress",
       population: inProgressPercentage,
-      color: "#1E88E5",
+      color: "#1F75FE",
       legendFontColor: theme === "dark" ? "#fff" : "#333",
       legendFontSize: 14,
       formattedValue: `${inProgressPercentage}%`,

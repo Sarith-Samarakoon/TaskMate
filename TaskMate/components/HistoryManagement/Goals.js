@@ -466,16 +466,32 @@ const styles = StyleSheet.create({
   },
   goalSummaryContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginVertical: 20,
+    paddingVertical: 12,
+    width: 350,
+    borderRadius: 12,
+    backgroundColor: '#74BBFB', // Light blueish background
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3, // For Android shadow
+    borderWidth: 1,
+    borderColor: '#74BBFB', // Light border color
   },
   goalCard: {
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 15,
     alignItems: 'center',
-    width: '40%',
+    width: '60%',
     shadowColor: '#000',
+    marginLeft: 70,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
