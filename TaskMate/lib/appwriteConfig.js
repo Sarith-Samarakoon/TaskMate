@@ -145,7 +145,6 @@ export const handleCreateTask = async (
   priority,
   Category,
   deadline,
-  image,
   completed,
   schedule
 ) => {
@@ -159,24 +158,6 @@ export const handleCreateTask = async (
     return;
   }
 
-  let imageFileId = null;
-  if (image) {
-    const fileInfo = await FileSystem.getInfoAsync(image);
-    if (!fileInfo.exists) {
-      Alert.alert("Error", "Image file does not exist.");
-      return;
-    }
-
-    const file = {
-      uri: image,
-      name: `task_image_${ID.unique()}.jpg`,
-      type: "image/jpeg",
-      size: fileInfo.size,
-    };
-    const uploadedFile = await storage.createFile(bucketId, ID.unique(), file);
-    imageFileId = uploadedFile.$id;
-  }
-
   try {
     const newTask = {
       title,
@@ -186,7 +167,6 @@ export const handleCreateTask = async (
       Category,
       completed,
       schedule,
-      image: imageFileId,
     };
 
     const response = await databases.createDocument(

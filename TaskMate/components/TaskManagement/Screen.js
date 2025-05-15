@@ -108,7 +108,7 @@ const Screen = ({ navigation }) => {
 
   const handlePredict = async (task) => {
     try {
-      const response = await fetch("http://192.168.0.91:5000/predict", {
+      const response = await fetch("http://172.28.14.123:5000/predict", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -549,7 +549,7 @@ const Screen = ({ navigation }) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.iconButton}
-                      onPress={() => deleteTask(task.id)}
+                      onPress={() => deleteTask(task.$id)}
                     >
                       <MaterialIcons
                         name="delete"

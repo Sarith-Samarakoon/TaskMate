@@ -18,6 +18,7 @@ import { databases, getCurrentUser } from "../../lib/appwriteConfig";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import { LinearGradient } from "expo-linear-gradient";
 import { Asset } from "expo-asset";
 
 const PersonalInformation = () => {
@@ -785,226 +786,416 @@ const PersonalInformation = () => {
   }
 
   return (
-    <ScrollView
+    <View
       style={[
         styles.container,
         theme === "dark" ? styles.darkContainer : styles.lightContainer,
       ]}
-      contentContainerStyle={styles.scrollContainer}
     >
       <TopBar title="Personal Information" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons
-            name="arrow-back-outline"
-            size={28}
-            color={theme === "dark" ? "#FFF" : "#333"}
-          />
-        </TouchableOpacity>
+
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={28}
+              color={theme === "dark" ? "#FFFFFF" : "#2D3748"}
+            />
+          </TouchableOpacity>
+          <Text
+            style={[
+              styles.headerTitle,
+              theme === "dark" ? styles.darkText : styles.lightText,
+            ]}
+          >
+            My Profile
+          </Text>
+          <View style={{ width: 28 }} />
+        </View>
+
+        {/* Profile Card */}
+        <LinearGradient
+          colors={
+            theme === "dark" ? ["#16161A", "#242629"] : ["#FFFFFF", "#F8F9FA"]
+          }
+          style={styles.profileCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <TouchableOpacity
+            style={styles.profileImageContainer}
+            onPress={pickImageAndUpload}
+          >
+            <Image
+              source={{
+                uri:
+                  user?.prefs?.profilePicture ||
+                  "https://i.pinimg.com/736x/0b/97/6f/0b976f0a7aa1aa43870e1812eee5a55d.jpg",
+              }}
+              style={styles.profileImage}
+            />
+            <View style={styles.editIcon}>
+              <Ionicons name="camera" size={20} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.userInfo}>
+            <Text
+              style={[
+                styles.userName,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {user?.name || "User"}
+            </Text>
+            <Text
+              style={[
+                styles.userEmail,
+                theme === "dark" ? styles.darkSubText : styles.lightSubText,
+              ]}
+            >
+              {user?.email || "user@example.com"}
+            </Text>
+          </View>
+        </LinearGradient>
+
+        {/* Personal Information Section */}
+        <View
+          style={[
+            styles.section,
+            theme === "dark" ? styles.darkSection : styles.lightSection,
+          ]}
+        >
+          <View style={styles.sectionHeader}>
+            <Ionicons
+              name="person-circle-outline"
+              size={24}
+              color={theme === "dark" ? "#7F5AF0" : "#6C63FF"}
+            />
+            <Text
+              style={[
+                styles.sectionTitle,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Personal Information
+            </Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <View style={styles.infoLabelContainer}>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={theme === "dark" ? "#94A1B2" : "#718096"}
+              />
+              <Text
+                style={[
+                  styles.infoLabel,
+                  theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                ]}
+              >
+                Full Name
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.infoValue,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {user?.name || "Not provided"}
+            </Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <View style={styles.infoLabelContainer}>
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color={theme === "dark" ? "#94A1B2" : "#718096"}
+              />
+              <Text
+                style={[
+                  styles.infoLabel,
+                  theme === "dark" ? styles.darkSubText : styles.lightSubText,
+                ]}
+              >
+                Email Address
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.infoValue,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {user?.email || "Not provided"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Reports Section */}
+        <View
+          style={[
+            styles.section,
+            theme === "dark" ? styles.darkSection : styles.lightSection,
+          ]}
+        >
+          <View style={styles.sectionHeader}>
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color={theme === "dark" ? "#7F5AF0" : "#6C63FF"}
+            />
+            <Text
+              style={[
+                styles.sectionTitle,
+                theme === "dark" ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Generate Reports
+            </Text>
+          </View>
+
+          <Text
+            style={[
+              styles.sectionDescription,
+              theme === "dark" ? styles.darkSubText : styles.lightSubText,
+            ]}
+          >
+            Export your data for record keeping or analysis
+          </Text>
+
+          <TouchableOpacity
+            style={[
+              styles.reportButton,
+              { backgroundColor: theme === "dark" ? "#7F5AF0" : "#6C63FF" },
+            ]}
+            onPress={generateTaskReport}
+          >
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={24}
+              color="#FFFFFF"
+            />
+            <Text style={styles.reportButtonText}>Task Report</Text>
+            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.reportButton,
+              { backgroundColor: theme === "dark" ? "#2CB67D" : "#38B2AC" },
+            ]}
+            onPress={generateRemindersReport}
+          >
+            <Ionicons name="alarm-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.reportButtonText}>Reminders Report</Text>
+            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.reportButton,
+              { backgroundColor: theme === "dark" ? "#EF4565" : "#F56565" },
+            ]}
+            onPress={generateGoalsReport}
+          >
+            <Ionicons name="flag-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.reportButtonText}>Goals Report</Text>
+            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* App Version */}
         <Text
           style={[
-            styles.headerTitle,
-            theme === "dark" ? styles.darkText : styles.lightText,
+            styles.versionText,
+            theme === "dark" ? styles.darkSubText : styles.lightSubText,
           ]}
         >
-          Personal Information
+          TaskMate v1.0.0
         </Text>
-        <View style={{ width: 28 }} />
-      </View>
-      <View
-        style={[
-          styles.infoContainer,
-          theme === "dark" ? styles.darkCard : styles.lightCard,
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.profileImageContainer}
-          onPress={pickImageAndUpload}
-        >
-          <Image
-            source={{
-              uri:
-                user?.prefs?.profilePicture ||
-                "https://i.pinimg.com/736x/0b/97/6f/0b976f0a7aa1aa43870e1812eee5a55d.jpg",
-            }}
-            style={styles.profileImage}
-          />
-          <Text style={styles.uploadHint}>Tap to change</Text>
-        </TouchableOpacity>
-
-        <View style={styles.infoItem}>
-          <Text
-            style={[
-              styles.label,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Name
-          </Text>
-          <Text
-            style={[
-              styles.value,
-              theme === "dark" ? styles.darkSubText : styles.lightSubText,
-            ]}
-          >
-            {user?.name || "person"}
-          </Text>
-        </View>
-
-        <View style={styles.infoItem}>
-          <Text
-            style={[
-              styles.label,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Email
-          </Text>
-          <Text
-            style={[
-              styles.value,
-              theme === "dark" ? styles.darkSubText : styles.lightSubText,
-            ]}
-          >
-            {user?.email || "person@gmail.com"}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.reportButton,
-            theme === "dark" ? styles.darkButton : styles.lightButton,
-          ]}
-          onPress={generateTaskReport}
-        >
-          <Text
-            style={[
-              styles.reportButtonText,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Generate Task Report
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.reportButton,
-            theme === "dark" ? styles.darkButton : styles.lightButton,
-            styles.remindersButton,
-          ]}
-          onPress={generateRemindersReport}
-        >
-          <Text
-            style={[
-              styles.reportButtonText,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Generate Reminders Report
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.reportButton,
-            theme === "dark" ? styles.darkButton : styles.lightButton,
-            styles.goalsButton,
-          ]}
-          onPress={generateGoalsReport}
-        >
-          <Text
-            style={[
-              styles.reportButtonText,
-              theme === "dark" ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Generate Goals Report
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  darkContainer: { backgroundColor: "#121212" },
-  lightContainer: { backgroundColor: "#F9F9F9" },
-  scrollContainer: { paddingBottom: 20 },
+  container: {
+    flex: 1,
+  },
+  darkContainer: {
+    backgroundColor: "#16161A",
+  },
+  lightContainer: {
+    backgroundColor: "#F8F9FA",
+  },
   loaderContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+  darkLoaderContainer: {
+    backgroundColor: "#16161A",
+  },
+  lightLoaderContainer: {
+    backgroundColor: "#F8F9FA",
+  },
+  scrollContainer: {
+    paddingBottom: 30,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  backButton: {
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
   },
-  infoContainer: {
+  darkText: {
+    color: "#FFFFFE",
+  },
+  lightText: {
+    color: "#2D3748",
+  },
+  darkSubText: {
+    color: "#94A1B2",
+  },
+  lightSubText: {
+    color: "#718096",
+  },
+  profileCard: {
     marginHorizontal: 20,
-    borderRadius: 10,
-    padding: 15,
-    elevation: 2,
-    marginTop: 20,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: "center",
   },
   profileImageContainer: {
-    alignItems: "center",
-    marginBottom: 20,
+    position: "relative",
+    marginBottom: 16,
   },
   profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: "#00FF00",
+    borderColor: "#6C63FF",
   },
-  uploadHint: {
-    marginTop: 10,
-    color: "#777",
-    fontSize: 12,
-  },
-  infoItem: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  value: {
-    fontSize: 14,
-  },
-  darkCard: { backgroundColor: "#1E1E1E", elevation: 2 },
-  lightCard: { backgroundColor: "#FFF", elevation: 2 },
-  darkText: { color: "#FFF" },
-  lightText: { color: "#333" },
-  darkSubText: { color: "#BBB" },
-  lightSubText: { color: "#777" },
-  reportButton: {
-    marginTop: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+  editIcon: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#6C63FF",
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
     alignItems: "center",
   },
-  remindersButton: {
-    marginTop: 10, // Add spacing between buttons
+  userInfo: {
+    alignItems: "center",
   },
-  goalsButton: {
-    marginTop: 10, // Add spacing between buttons
+  userName: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 4,
   },
-  darkButton: { backgroundColor: "#333" },
-  lightButton: { backgroundColor: "#007AFF" },
+  userEmail: {
+    fontSize: 14,
+  },
+  section: {
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  darkSection: {
+    backgroundColor: "#242629",
+  },
+  lightSection: {
+    backgroundColor: "#FFFFFF",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 12,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  infoItem: {
+    marginBottom: 20,
+  },
+  infoLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  infoLabel: {
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  infoValue: {
+    fontSize: 16,
+    fontWeight: "500",
+    paddingLeft: 26,
+  },
+  reportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
   reportButtonText: {
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+    flex: 1,
+    marginLeft: 12,
+  },
+  versionText: {
+    textAlign: "center",
+    fontSize: 12,
+    marginTop: 8,
   },
 });
 

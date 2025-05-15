@@ -7,18 +7,13 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
-  Image,
   Alert,
-  Switch,
 } from "react-native";
-
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../ThemeContext";
-import TopBar from "../MenuBars/TopBar";
 import { useNavigation } from "@react-navigation/native";
-import { handleCreateTask } from "../../lib/appwriteConfig"; // Import Appwrite function
+import { handleCreateTask } from "../../lib/appwriteConfig";
 
 const CreateTaskScreen = () => {
   const { theme } = useTheme();
@@ -30,30 +25,15 @@ const CreateTaskScreen = () => {
   const [category, setCategory] = useState("Work");
   const [deadline, setDeadline] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [image, setImage] = useState(null);
   const [completed, setCompleted] = useState(false);
   const [schedule, setSchedule] = useState("Daily");
-  const [time, setTime] = useState(new Date()); // State to store the selected time
+  const [time, setTime] = useState(new Date());
   const navigation = useNavigation();
 
-  // Image Picker function
-  const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert("Permission Denied", "Please allow access to media library.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-      allowsEditing: true,
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+  // Helper to get current date without time for comparison
+  const getTodayDate = () => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   };
 
   // Function to create a task
@@ -63,7 +43,12 @@ const CreateTaskScreen = () => {
       return;
     }
 
-    // If schedule is Daily, we don't require a deadline.
+    // Validate time for Daily schedule
+    if (schedule === "Daily" && time < new Date()) {
+      Alert.alert("Validation Error", "Please select a future time for today.");
+      return;
+    }
+
     const finalDeadline = schedule === "Daily" ? time : deadline;
 
     try {
@@ -73,14 +58,11 @@ const CreateTaskScreen = () => {
         priority,
         category,
         finalDeadline,
-        image,
         completed,
         schedule
       );
       Alert.alert("Success", "Task created successfully!");
-
-      // Navigate to the desired screen (e.g., Screen.js) after task creation
-      navigation.navigate("Home"); // Replace "Screen" with your target screen name
+      navigation.navigate("Home");
     } catch (error) {
       console.error("Task Creation Error:", error);
       Alert.alert("Error", "Failed to create task.");
@@ -130,19 +112,6 @@ const CreateTaskScreen = () => {
         numberOfLines={4}
       />
 
-      {/* Image Picker
-      <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-        <Text style={styles.imageButtonText}>
-          {image ? "Change Image" : "Add Image"}
-        </Text>
-      </TouchableOpacity>
-
-      {image && (
-        <View style={styles.imagePreview}>
-          <Image source={{ uri: image }} style={styles.image} />
-        </View>
-      )} */}
-
       <View style={styles.row}>
         <View style={styles.pickerContainer}>
           <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>
@@ -185,7 +154,6 @@ const CreateTaskScreen = () => {
           style={styles.picker}
           onValueChange={(itemValue) => {
             setSchedule(itemValue);
-            // Reset time when schedule is changed to something other than Daily
             if (itemValue !== "Daily") setTime(new Date());
           }}
         >
@@ -195,7 +163,7 @@ const CreateTaskScreen = () => {
         </Picker>
       </View>
 
-      {/* If the schedule is Daily, show the time picker instead of the deadline */}
+      {/* Time or Deadline Picker */}
       {schedule === "Daily" ? (
         <View style={styles.pickerContainer}>
           <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>
@@ -221,6 +189,7 @@ const CreateTaskScreen = () => {
               value={time}
               mode="time"
               display={Platform.OS === "ios" ? "inline" : "default"}
+              minimumDate={new Date()}
               onChange={(event, selectedTime) => {
                 setShowDatePicker(false);
                 if (selectedTime) setTime(selectedTime);
@@ -253,6 +222,7 @@ const CreateTaskScreen = () => {
               value={deadline}
               mode="date"
               display={Platform.OS === "ios" ? "inline" : "default"}
+              minimumDate={getTodayDate()}
               onChange={(event, selectedDate) => {
                 setShowDatePicker(false);
                 if (selectedDate) setDeadline(selectedDate);
@@ -320,28 +290,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 18,
-  },
-  imageButton: {
-    marginTop: 12,
-    backgroundColor: "#E5E5E5",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  imageButtonText: {
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  imagePreview: {
-    marginTop: 10,
-    alignItems: "center",
-  },
-  image: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-    resizeMode: "cover",
   },
 });
 

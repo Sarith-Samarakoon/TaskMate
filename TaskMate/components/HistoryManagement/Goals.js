@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Modal,
   TextInput,
   Alert,
+  SafeAreaView,
+  Dimensions,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -24,6 +26,9 @@ const databases = new Databases(client);
 
 const GoalsScreen = () => {
   const [goals, setGoals] = useState([]);
+  const [filteredGoals, setFilteredGoals] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -32,143 +37,162 @@ const GoalsScreen = () => {
   const [endDateError, setEndDateError] = useState("");
   const navigation = useNavigation();
 
-  // Fetch Goals
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     try {
       const response = await databases.listDocuments(
         "67de6cb1003c63a59683",
         "67e16137002384116add"
       );
       setGoals(response.documents);
+      setFilteredGoals(response.documents);
+      console.log("Goals fetched:", response.documents.length);
     } catch (error) {
       console.error("Error fetching goals:", error);
+      Alert.alert("Error", "Failed to fetch goals.");
     }
-  };
+  }, []);
 
-  // Calculate Total Goal Progress
-  const completedGoals = goals.filter((goal) => goal.Completed).length;
-  const totalGoals = goals.length;
+  const handleSearch = useCallback(
+    (query) => {
+      setSearchQuery(query);
+      if (query.trim() === "") {
+        setFilteredGoals(goals);
+      } else {
+        const filtered = goals.filter((goal) =>
+          goal.GoalName.toLowerCase().startsWith(query.toLowerCase())
+        );
+        setFilteredGoals(filtered);
+      }
+    },
+    [goals]
+  );
 
-  // Delete Goal
-  const deleteGoal = async (goalId) => {
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    setFilteredGoals(goals);
+  }, [goals]);
+
+  const completedGoals = filteredGoals.filter((goal) => goal.Completed).length;
+  const totalGoals = filteredGoals.length;
+
+  const deleteGoal = useCallback(async (goalId) => {
     try {
       await databases.deleteDocument(
         "67de6cb1003c63a59683",
         "67e16137002384116add",
         goalId
       );
-      setGoals(goals.filter((goal) => goal.$id !== goalId));
+      setGoals((prev) => prev.filter((goal) => goal.$id !== goalId));
+      setFilteredGoals((prev) => prev.filter((goal) => goal.$id !== goalId));
       Alert.alert("Success", "Goal has been deleted.");
     } catch (error) {
       console.error("Error deleting goal:", error);
       Alert.alert("Error", "Failed to delete goal.");
     }
-  };
+  }, []);
 
-  // Complete Goal
-  const completeGoal = async (goalId, currentStatus) => {
-    try {
-      await databases.updateDocument(
-        "67de6cb1003c63a59683",
-        "67e16137002384116add",
-        goalId,
-        {
-          Completed: !currentStatus,
-        }
-      );
-      fetchGoals();
-      Alert.alert(
-        "Success",
-        `Goal marked as ${!currentStatus ? "completed" : "incomplete"}.`
-      );
-    } catch (error) {
-      console.error("Error completing goal:", error);
-      Alert.alert("Error", "Failed to update goal status.");
-    }
-  };
+  const completeGoal = useCallback(
+    async (goalId, currentStatus) => {
+      try {
+        await databases.updateDocument(
+          "67de6cb1003c63a59683",
+          "67e16137002384116add",
+          goalId,
+          { Completed: !currentStatus }
+        );
+        await fetchGoals();
+        Alert.alert(
+          "Success",
+          `Goal marked as ${!currentStatus ? "completed" : "incomplete"}.`
+        );
+      } catch (error) {
+        console.error("Error completing goal:", error);
+        Alert.alert("Error", "Failed to update goal status.");
+      }
+    },
+    [fetchGoals]
+  );
 
-  // Open Edit Modal
-  const openEditModal = (goal) => {
+  const openEditModal = useCallback((goal) => {
     setSelectedGoal({
       ...goal,
-      Start_Date: goal.Start_Date || "2025-05-13T00:00:00.000Z",
-      End_Date: goal.End_Date || "2025-05-13T00:00:00.000Z",
+      Start_Date: goal.Start_Date || moment().toISOString(),
+      End_Date: goal.End_Date || moment().add(1, "day").toISOString(),
       GoalNote: goal.GoalNote || "",
     });
     setStartDateError("");
     setEndDateError("");
     setModalVisible(true);
-  };
+    console.log("Edit modal opened for goal:", goal.$id);
+  }, []);
 
-  // Validate Date
-  const validateDate = (date, fieldName) => {
-    if (!date) {
-      return `${fieldName} is required.`;
-    }
+  const validateDate = useCallback((date, fieldName) => {
+    if (!date) return `${fieldName} is required.`;
     const parsedDate = moment(date);
-    if (!parsedDate.isValid()) {
-      return `Invalid ${fieldName.toLowerCase()}.`;
-    }
+    if (!parsedDate.isValid()) return Invalid`${fieldName.toLowerCase()}.`;
     if (fieldName === "Start Date" && parsedDate.isBefore(moment(), "day")) {
       return "Start date cannot be before today.";
     }
     return "";
-  };
+  }, []);
 
-  // Validate End Date is After Start Date
-  const validateEndDateAfterStartDate = (startDate, endDate) => {
+  const validateEndDateAfterStartDate = useCallback((startDate, endDate) => {
     const start = moment(startDate);
     const end = moment(endDate);
     if (start.isValid() && end.isValid() && end.isSameOrBefore(start, "day")) {
       return "End date must be after start date.";
     }
     return "";
-  };
+  }, []);
 
-  // Format Date for Display
-  const formatDateForDisplay = (date) => {
-    return date ? moment(date).format("YYYY-MM-DD") : "";
-  };
+  const formatDateForDisplay = useCallback((date) => {
+    return date ? moment(date).format("YYYY-MM-DD") : "Select date";
+  }, []);
 
-  // Handle Start Date Selection
-  const handleStartDatePress = (day) => {
-    const selectedDay = moment(day.dateString);
-    const today = moment();
-    if (selectedDay.isBefore(today, "day")) {
-      Alert.alert("Error", "Start date cannot be before today.");
-      return;
-    }
-    const isoDate = selectedDay.startOf("day").toISOString();
-    setSelectedGoal({ ...selectedGoal, Start_Date: isoDate });
-    setStartDateError(validateDate(isoDate, "Start Date"));
-    setEndDateError(
-      validateDate(selectedGoal?.End_Date, "End Date") ||
-        validateEndDateAfterStartDate(isoDate, selectedGoal?.End_Date)
-    );
-    setShowStartDatePicker(false);
-  };
+  const handleStartDatePress = useCallback(
+    (day) => {
+      const selectedDay = moment(day.dateString);
+      const today = moment();
+      if (selectedDay.isBefore(today, "day")) {
+        Alert.alert("Error", "Start date cannot be before today.");
+        return;
+      }
+      const isoDate = selectedDay.startOf("day").toISOString();
+      setSelectedGoal((prev) => ({ ...prev, Start_Date: isoDate }));
+      setStartDateError(validateDate(isoDate, "Start Date"));
+      setEndDateError(
+        validateDate(selectedGoal?.End_Date, "End Date") ||
+          validateEndDateAfterStartDate(isoDate, selectedGoal?.End_Date)
+      );
+      setShowStartDatePicker(false);
+      console.log("Start date selected:", isoDate);
+    },
+    [selectedGoal, validateDate, validateEndDateAfterStartDate]
+  );
 
-  // Handle End Date Selection
-  const handleEndDatePress = (day) => {
-    const selectedDay = moment(day.dateString);
-    const start = moment(selectedGoal?.Start_Date);
-    if (selectedDay.isSameOrBefore(start, "day")) {
-      Alert.alert("Error", "End date must be after start date.");
-      return;
-    }
-    const isoDate = selectedDay.startOf("day").toISOString();
-    setSelectedGoal({ ...selectedGoal, End_Date: isoDate });
-    setEndDateError(
-      validateDate(isoDate, "End Date") ||
-        validateEndDateAfterStartDate(selectedGoal?.Start_Date, isoDate)
-    );
-    setShowEndDatePicker(false);
-  };
+  const handleEndDatePress = useCallback(
+    (day) => {
+      const selectedDay = moment(day.dateString);
+      const start = moment(selectedGoal?.Start_Date);
+      if (selectedDay.isSameOrBefore(start, "day")) {
+        Alert.alert("Error", "End date must be after start date.");
+        return;
+      }
+      const isoDate = selectedDay.startOf("day").toISOString();
+      setSelectedGoal((prev) => ({ ...prev, End_Date: isoDate }));
+      setEndDateError(
+        validateDate(isoDate, "End Date") ||
+          validateEndDateAfterStartDate(selectedGoal?.Start_Date, isoDate)
+      );
+      setShowEndDatePicker(false);
+      console.log("End date selected:", isoDate);
+    },
+    [selectedGoal, validateDate, validateEndDateAfterStartDate]
+  );
 
-  // Update Goal
-  const updateGoal = async () => {
+  const updateGoal = useCallback(async () => {
     if (!selectedGoal?.GoalName.trim()) {
-      Alert.alert("Error", "Goal name cannot be empty");
+      Alert.alert("Error", "Goal name cannot be empty.");
       return;
     }
 
@@ -210,33 +234,40 @@ const GoalsScreen = () => {
           Completed: selectedGoal.Completed || false,
         }
       );
-      fetchGoals();
+      await fetchGoals();
       setModalVisible(false);
       setSelectedGoal(null);
       setStartDateError("");
       setEndDateError("");
-      Alert.alert("Success", "Your Goal is Updated!");
+      Alert.alert("Success", "Your goal has been updated!");
     } catch (error) {
       console.error("Error updating goal:", error);
       Alert.alert("Error", "Failed to update goal.");
     }
-  };
+  }, [selectedGoal, fetchGoals, validateDate, validateEndDateAfterStartDate]);
 
   useEffect(() => {
     fetchGoals();
-  }, []);
+  }, [fetchGoals]);
 
-  // Header and Summary Component for FlatList
   const renderHeader = () => (
     <>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="black" />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessible={true}
+          accessibilityLabel="Go back"
+          accessibilityHint="Navigate to previous screen"
+        >
+          <Ionicons name="chevron-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Your Goals</Text>
         <TouchableOpacity
           style={styles.addGoalButton}
           onPress={() => navigation.navigate("SetGoals")}
+          accessible={true}
+          accessibilityLabel="Add new goal"
+          accessibilityHint="Navigate to set goals screen"
         >
           <Text style={styles.addGoalText}>+ Add Goal</Text>
         </TouchableOpacity>
@@ -251,14 +282,55 @@ const GoalsScreen = () => {
           <Text style={styles.goalSubtext}>Goals completed</Text>
         </View>
       </View>
+
+      <View
+        style={[
+          styles.searchContainer,
+          isSearchFocused && styles.searchContainerFocused,
+        ]}
+      >
+        <Ionicons
+          name="search"
+          size={20}
+          color="#888"
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={handleSearch}
+          placeholder={
+            isSearchFocused ? "Type to search..." : "Search goals by name"
+          }
+          placeholderTextColor="#888"
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
+          autoFocus={false}
+          returnKeyType="search"
+          accessible={true}
+          accessibilityLabel="Search goals"
+          accessibilityHint="Enter text to filter goals by name"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={clearSearch}
+            style={styles.clearButton}
+            accessible={true}
+            accessibilityLabel="Clear search"
+            accessibilityHint="Remove all text from the search bar"
+          >
+            <Ionicons name="close-circle" size={20} color="#888" />
+          </TouchableOpacity>
+        )}
+      </View>
     </>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <TopBar title="Goals" />
       <FlatList
-        data={goals}
+        data={filteredGoals}
         keyExtractor={(item) => item.$id}
         renderItem={({ item }) => (
           <View
@@ -298,14 +370,31 @@ const GoalsScreen = () => {
                 Note: {item.GoalNote || "N/A"}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => openEditModal(item)}>
-              <MaterialIcons name="edit" size={20} color="black" />
+            <TouchableOpacity
+              onPress={() => openEditModal(item)}
+              accessible={true}
+              accessibilityLabel="Edit goal"
+              accessibilityHint="Open modal to edit this goal"
+            >
+              <MaterialIcons name="edit" size={20} color="#333" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => deleteGoal(item.$id)}>
-              <MaterialIcons name="delete" size={20} color="red" />
+            <TouchableOpacity
+              onPress={() => deleteGoal(item.$id)}
+              accessible={true}
+              accessibilityLabel="Delete goal"
+              accessibilityHint="Delete this goal"
+            >
+              <MaterialIcons name="delete" size={20} color="#FF3B30" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => completeGoal(item.$id, item.Completed)}
+              accessible={true}
+              accessibilityLabel={
+                item.Completed
+                  ? "Mark goal as incomplete"
+                  : "Mark goal as completed"
+              }
+              accessibilityHint="Toggle goal completion status"
             >
               <MaterialIcons
                 name={item.Completed ? "undo" : "check"}
@@ -317,71 +406,87 @@ const GoalsScreen = () => {
         )}
         ListHeaderComponent={renderHeader}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       />
 
-      {/* Update Goal Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalContainer}>
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setModalVisible(false);
+          setSelectedGoal(null);
+          console.log("Edit modal closed");
+        }}
+      >
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Goal</Text>
             <TextInput
               style={styles.input}
               value={selectedGoal?.GoalName || ""}
               onChangeText={(text) =>
-                setSelectedGoal({ ...selectedGoal, GoalName: text })
+                setSelectedGoal((prev) => ({ ...prev, GoalName: text }))
               }
               placeholder="Goal Name"
               placeholderTextColor="#888"
+              accessible={true}
+              accessibilityLabel="Goal name input"
+              accessibilityHint="Enter the name of the goal"
             />
             <Text style={styles.label}>Start Date</Text>
-            <TouchableOpacity onPress={() => setShowStartDatePicker(true)}>
-              <View
-                style={[
-                  styles.inputContainer,
-                  startDateError ? styles.inputError : null,
-                ]}
-              >
-                <TextInput
-                  style={styles.inputWithIcon}
-                  value={formatDateForDisplay(selectedGoal?.Start_Date)}
-                  editable={false}
-                  placeholder="Select start date"
-                  placeholderTextColor="#888"
-                />
-                <MaterialIcons
-                  name="calendar-today"
-                  size={24}
-                  color="#2A4D9B"
-                  style={styles.icon}
-                />
-              </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowStartDatePicker(true);
+                console.log("Start date picker opened");
+              }}
+              style={[
+                styles.inputContainer,
+                startDateError ? styles.inputError : null,
+              ]}
+              accessible={true}
+              accessibilityLabel="Select start date"
+              accessibilityHint="Open calendar to select goal start date"
+            >
+              <Text style={styles.inputWithIcon}>
+                {formatDateForDisplay(selectedGoal?.Start_Date)}
+              </Text>
+              <MaterialIcons
+                name="calendar-today"
+                size={24}
+                color="#2A4D9B"
+                style={styles.icon}
+              />
             </TouchableOpacity>
             {startDateError ? (
               <Text style={styles.errorText}>{startDateError}</Text>
             ) : null}
 
             <Text style={styles.label}>End Date</Text>
-            <TouchableOpacity onPress={() => setShowEndDatePicker(true)}>
-              <View
-                style={[
-                  styles.inputContainer,
-                  endDateError ? styles.inputError : null,
-                ]}
-              >
-                <TextInput
-                  style={styles.inputWithIcon}
-                  value={formatDateForDisplay(selectedGoal?.End_Date)}
-                  editable={false}
-                  placeholder="Select end date"
-                  placeholderTextColor="#888"
-                />
-                <MaterialIcons
-                  name="calendar-today"
-                  size={24}
-                  color="#2A4D9B"
-                  style={styles.icon}
-                />
-              </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowEndDatePicker(true);
+                console.log("End date picker opened");
+              }}
+              style={[
+                styles.inputContainer,
+                endDateError ? styles.inputError : null,
+              ]}
+              accessible={true}
+              accessibilityLabel="Select end date"
+              accessibilityHint="Open calendar to select goal end date"
+            >
+              <Text style={styles.inputWithIcon}>
+                {formatDateForDisplay(selectedGoal?.End_Date)}
+              </Text>
+              <MaterialIcons
+                name="calendar-today"
+                size={24}
+                color="#2A4D9B"
+                style={styles.icon}
+              />
             </TouchableOpacity>
             {endDateError ? (
               <Text style={styles.errorText}>{endDateError}</Text>
@@ -391,41 +496,66 @@ const GoalsScreen = () => {
               style={styles.input}
               value={selectedGoal?.GoalNote || ""}
               onChangeText={(text) =>
-                setSelectedGoal({ ...selectedGoal, GoalNote: text })
+                setSelectedGoal((prev) => ({ ...prev, GoalNote: text }))
               }
               placeholder="Goal Note"
               placeholderTextColor="#888"
+              accessible={true}
+              accessibilityLabel="Goal note input"
+              accessibilityHint="Enter a note for the goal (optional)"
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={updateGoal} style={styles.saveButton}>
+              <TouchableOpacity
+                onPress={updateGoal}
+                style={styles.saveButton}
+                accessible={true}
+                accessibilityLabel="Save goal"
+                accessibilityHint="Save the updated goal details"
+              >
                 <Text style={styles.buttonText}>Save</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setModalVisible(false);
                   setSelectedGoal(null);
+                  setStartDateError("");
+                  setEndDateError("");
+                  console.log("Edit modal closed via cancel");
                 }}
                 style={styles.cancelButton}
+                accessible={true}
+                accessibilityLabel="Cancel edit"
+                accessibilityHint="Close the modal without saving changes"
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
-      {/* Start Date Calendar Modal */}
       <Modal
         visible={showStartDatePicker}
         animationType="slide"
-        transparent
-        onRequestClose={() => setShowStartDatePicker(false)}
+        transparent={true}
+        onRequestClose={() => {
+          setShowStartDatePicker(false);
+          console.log("Start date picker closed");
+        }}
       >
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Start Date</Text>
-              <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowStartDatePicker(false);
+                  console.log("Start date picker closed via close button");
+                }}
+                accessible={true}
+                accessibilityLabel="Close start date calendar"
+                accessibilityHint="Close the start date calendar without selecting a date"
+              >
                 <MaterialIcons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
@@ -448,25 +578,38 @@ const GoalsScreen = () => {
                 dayTextColor: "#333",
                 arrowColor: "#2A4D9B",
                 monthTextColor: "#333",
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 14,
               }}
               style={styles.calendar}
             />
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
-      {/* End Date Calendar Modal */}
       <Modal
         visible={showEndDatePicker}
         animationType="slide"
-        transparent
-        onRequestClose={() => setShowEndDatePicker(false)}
+        transparent={true}
+        onRequestClose={() => {
+          setShowEndDatePicker(false);
+          console.log("End date picker closed");
+        }}
       >
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select End Date</Text>
-              <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowEndDatePicker(false);
+                  console.log("End date picker closed via close button");
+                }}
+                accessible={true}
+                accessibilityLabel="Close end date calendar"
+                accessibilityHint="Close the end date calendar without selecting a date"
+              >
                 <MaterialIcons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
@@ -478,9 +621,13 @@ const GoalsScreen = () => {
                   selectedColor: "#2A4D9B",
                 },
               }}
-              minDate={moment(selectedGoal?.Start_Date)
-                .add(1, "day")
-                .format("YYYY-MM-DD")}
+              minDate={
+                selectedGoal?.Start_Date
+                  ? moment(selectedGoal.Start_Date)
+                      .add(1, "day")
+                      .format("YYYY-MM-DD")
+                  : moment().add(1, "day").format("YYYY-MM-DD")
+              }
               theme={{
                 backgroundColor: "#fff",
                 calendarBackground: "#fff",
@@ -491,13 +638,16 @@ const GoalsScreen = () => {
                 dayTextColor: "#333",
                 arrowColor: "#2A4D9B",
                 monthTextColor: "#333",
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 14,
               }}
               style={styles.calendar}
             />
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -538,23 +688,21 @@ const styles = StyleSheet.create({
   },
   goalSummaryContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     marginVertical: 20,
     paddingVertical: 12,
-    width: 350,
+    width: "90%",
+    alignSelf: "center",
     borderRadius: 12,
-    backgroundColor: "#74BBFB", // Light blueish background
+    backgroundColor: "#74BBFB",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3, // For Android shadow
+    elevation: 3,
     borderWidth: 1,
-    borderColor: "#74BBFB", // Light border color
+    borderColor: "#74BBFB",
   },
   goalCard: {
     backgroundColor: "#fff",
@@ -563,7 +711,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "60%",
     shadowColor: "#000",
-    marginLeft: 70,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -582,6 +729,39 @@ const styles = StyleSheet.create({
   goalSubtext: {
     fontSize: 14,
     color: "#555",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchContainerFocused: {
+    borderColor: "#2A4D9B",
+    shadowOpacity: 0.2,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 8,
+    fontSize: 16,
+    color: "#333",
+  },
+  clearButton: {
+    padding: 5,
   },
   content: {
     paddingHorizontal: 20,
@@ -631,9 +811,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    width: "85%",
+    width: "90%",
+    maxWidth: 400,
     backgroundColor: "#fff",
-    padding: 30,
+    padding: 20,
     borderRadius: 15,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -646,11 +827,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
     color: "#333",
+    textAlign: "center",
   },
   label: {
     fontSize: 16,
     fontWeight: "500",
-    marginBottom: 5,
+    marginBottom: 8,
+    marginTop: 12,
     color: "#333",
   },
   input: {
@@ -669,12 +852,12 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 10,
     marginBottom: 15,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     backgroundColor: "#f9f9f9",
   },
   inputWithIcon: {
     flex: 1,
-    paddingVertical: 10,
     fontSize: 16,
     color: "#333",
   },
@@ -682,11 +865,11 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   inputError: {
-    borderColor: "red",
+    borderColor: "#FF3B30",
   },
   errorText: {
     fontSize: 12,
-    color: "red",
+    color: "#FF3B30",
     marginBottom: 15,
   },
   modalButtons: {
@@ -700,7 +883,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 10,
     alignItems: "center",
-    justifyContent: "center",
+    flex: 1,
+    marginRight: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -713,7 +897,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 10,
     alignItems: "center",
-    justifyContent: "center",
+    flex: 1,
+    marginLeft: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -721,7 +906,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   buttonText: {
-    color: "white",
+    color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
   },
@@ -734,6 +919,8 @@ const styles = StyleSheet.create({
   calendar: {
     borderRadius: 10,
     padding: 10,
+    width: "100%",
+    backgroundColor: "#fff",
   },
 });
 
